@@ -45,4 +45,5 @@ Funzionalità condivise da tutti i dipendenti:
 
 ---
 
-## 🔗 Lin
+## 🔗 Link al Progetto
+👉 https://teamweave-gantt.lovable.app
