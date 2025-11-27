@@ -1,43 +1,77 @@
-#ANH-PROJECT
+# ANH-PROJECT
 
-#TAGLINE
-Organizza i tuoi progetti in modo intuitivo da qualsiasi luogo e in qualsiasi momento. 
+## Tagline
+**Organizza i tuoi progetti in modo intuitivo da qualsiasi luogo e in qualsiasi momento.**
 
-#DESCRIZIONE BREVE
-ANH-project è un software di gestione dei progetti aziendali sviluppato per semplificare la suddivisione del lavoro tra i membri di un team. Si basa sul diagramma di Gantt, un potente strumento, inventato da Henry Gantt, che permette di visualizzare graficamente tutti i dettagli fondamentali di un progetto. 
+---
 
-#DESCRIZIONE DEL PROGETTO
-ANH-Project è un’applicazione web pensata per semplificare la suddivisione delle attività tra i dipendenti di un’azienda, grazie a un sistema basato sui diagrammi di Gantt. La piattaforma permette inoltre di generare report generali, di team e personali, fornendo agli interessati una visione chiara dell’andamento dei lavoratori e dei progetti nel periodo desiderato.
+## Descrizione Breve
+**ANH-Project** è un software di gestione dei progetti aziendali sviluppato per semplificare la suddivisione del lavoro tra i membri di un team.  
+Si basa sul **diagramma di Gantt**, un potente strumento ideato da Henry Gantt che permette di visualizzare graficamente tutti i dettagli fondamentali di un progetto.
 
-Le aziende che intendono utilizzare il servizio possono registrarsi tramite la pagina di presentazione del progetto, accessibile al seguente link: ….
-La registrazione richiede il nome della società, la partita IVA e una password d’accesso. La partita IVA viene utilizzata dal sistema per eseguire una verifica che garantisca che solo imprese realmente esistenti possano acquistare il programma. Per le aziende non ancora registrate è disponibile anche una versione semplificata del servizio (DEMO), utile per valutare se l’applicazione soddisfa le loro esigenze. È inoltre possibile confrontare i vari piani disponibili o contattare il reparto vendite per richiederne uno personalizzato.
+---
 
-Una volta completata la registrazione e superata la verifica della partita IVA, l’azienda potrà scegliere il piano da acquistare oppure, in caso di piano personalizzato, confermare l’accordo stabilito con il reparto vendite. Successivamente procederà al pagamento della licenza e otterrà così l’accesso completo alle funzionalità del sistema.
-Un’azienda registrata e in possesso di un piano attivo potrà personalizzare la grafica dell’applicazione per adattarla al proprio stile aziendale, aggiungere e gestire i dipendenti sulla piattaforma (incluse le pre-registrazioni effettuate dagli stessi), gestire il rinnovo della licenza e generare report generali sull’andamento dei gruppi di lavoro.
+## Descrizione del Progetto
+**ANH-Project** è un’applicazione web pensata per semplificare la distribuzione delle attività tra i dipendenti di un’azienda tramite un sistema basato sui diagrammi di Gantt.  
+La piattaforma consente inoltre di generare **report generali, di team e personali**, offrendo una visione chiara dell’andamento dei lavoratori e dei progetti nel periodo selezionato.
 
-I dipendenti si suddividono in due ruoli: capigruppo e membri di progetto. L’azienda può assegnare entrambi i ruoli allo stesso dipendente in progetti differenti, a seconda delle necessità.
+Le aziende possono registrarsi tramite la pagina di presentazione del progetto.  
+La procedura richiede: **nome della società**, **partita IVA** (utilizzata per verificare l’esistenza dell’azienda) e **password di accesso**.
 
-I capigruppo possono creare progetti e aggiungere altri colleghi come membri di progetto. Possono assegnare attività a uno o più membri, calcolare il percorso critico per ottimizzare la distribuzione delle scadenze e generare report sia per l’intero team sia per i singoli dipendenti, utili per valutare la qualità del lavoro svolto.
+È disponibile anche una **versione DEMO**, utile per testare il servizio prima dell’acquisto.  
+Gli utenti possono inoltre confrontare i piani disponibili o contattare il reparto vendite per un piano personalizzato.
 
-I membri di progetto, invece, possono visualizzare i propri report e segnare come completate le attività loro assegnate.
+Una volta completata la registrazione e superata la verifica della partita IVA, l’azienda potrà acquistare un piano oppure confermare quello personalizzato. Dopo il pagamento della licenza, otterrà accesso completo alle funzionalità.
 
-Tra le funzioni disponibili sia per i capigruppo sia per i membri di progetto ci sono la possibilità di inviare messaggi ad altri dipendenti, inviare segnalazioni relative a eventuali problemi e effettuare una pre-registrazione sulla piattaforma, facilitando così l’azienda nella procedura di aggiunta dei dipendenti.
+Le aziende registrate possono:
+- Personalizzare la grafica dell’applicazione
+- Aggiungere e gestire i dipendenti (incluse eventuali pre-registrazioni)
+- Gestire il rinnovo della licenza
+- Generare report generali sull’andamento dei gruppi di lavoro
 
-#TARGET
-Aziende
+### Ruoli dei Dipendenti
+Sono presenti due tipologie di utenti:
+- **Capigruppo**
+- **Membri di progetto**
 
-#COMPETITOR
-GANTT PROJECT
-TRELLO
-ASANA
+L’azienda può assegnare entrambi i ruoli allo stesso dipendente in progetti diversi.
 
+I **capigruppo** possono:
+- Creare progetti
+- Aggiungere membri di progetto
+- Assegnare attività
+- Calcolare il percorso critico
+- Generare report del team e personali
 
-TECNOLOGIE UTILIZZATE
-HTML, CSS, TAILWIND, JAVASCRIPT
-PHP
-MySQL
+I **membri di progetto** possono:
+- Visualizzare i propri report
+- Segnare come completate le attività assegnate
 
-LINK AL PROGETTO
-🔗https://anh-project.alpinenode.it
+### Funzioni comuni ai dipendenti
+- Invio messaggi ad altri dipendenti  
+- Invio segnalazioni di problemi  
+- Pre-registrazione alla piattaforma per agevolare l’azienda nell’aggiunta dei dipendenti  
 
+---
 
+## Target
+**Aziende**
+
+---
+
+## Competitor
+- Gantt Project  
+- Trello  
+- Asana  
+
+---
+
+## Tecnologie Utilizzate
+- HTML, CSS, TailwindCSS, JavaScript  
+- PHP  
+- MySQL  
+
+---
+
+## 🔗 Link al Progetto
+https://anh-project.alpinenode.it
