@@ -1,0 +1,10 @@
+RewriteEngine On 
+
+# Impedisce all'utente di visualizzare la lista dei file se naviga in una cartella dove non cè un file index.php o index.html
+Options -Indexes
+
+# Controlla che quanto richiesto dall'utente non sia un vero file o una vera directory, nel caso procede con la RewriteRule
+RewriteCond %{REQUEST_FILENAME} !-f 
+RewriteCond %{REQUEST_FILENAME} !-d
+# QSA serve se l'utente aggiunge altri parametri manuali per aggiungerli all'URL passato in GET. Senza QSA nell'URL user/edit/5?lang=it, il pezzo ?lang=it andrebbe perso
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
