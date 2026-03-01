@@ -54,6 +54,12 @@ class Company extends Model
         return $this->db->resultObj();
     }
 
+    public function findById($tenant_id){
+        $this->db->query("SELECT * FROM Company WHERE Tenant_ID = :tenant_id");
+        $this->db->bind(":tenant_id", $tenant_id);
+        return $this->db->singleResult();
+    }
+
     public function findBySubdomain($subdomain){
         $this->db->query("SELECT * FROM Company WHERE Subdomain = :subdomain");
         $this->db->bind(":subdomain", $subdomain);

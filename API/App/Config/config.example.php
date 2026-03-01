@@ -8,3 +8,9 @@ define('DB_NAME', '****');
 define('DOMAIN_NAME', 'ousmanejr17.it');
 
 define('ROOT_FOLDER', '/API/');
+define('ROOT', 'API/');
+
+define('TENANT_SECRET_KEY', '****');
+
+define("SECRET_KEY", '****');
+define("JWT_ISSUER", "****");

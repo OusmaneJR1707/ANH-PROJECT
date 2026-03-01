@@ -12,5 +12,7 @@
             "email": "villa.davideousmane.studente@itispaleocapa.it"
         }
     ],
-    "require": {}
+    "require": {
+        "firebase/php-jwt": "^7.0"
+    }
 }
