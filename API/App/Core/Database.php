@@ -11,9 +11,23 @@ class Database
     private $stmt;
     private $error;
 
-    public function __construct($host = DB_HOST, $db_name = DB_NAME, $user = DB_USER, $pass = DB_PASS)
+    public function __construct($host = null, $db_name = null, $user = null, $pass = null)
     {
-        $dsn ='mysql:host=' . $host . ';dbname=' . $db_name . ';charset=utf8';
+        if($host === null) {
+            $host = DB_HOST;
+
+            if(Context::$isMaster) {
+                $db_name = DB_NAME;
+                $user = DB_USER;
+                $pass = DB_PASS;
+            } else {
+                $db_name = Context::$tenantDbName;
+                $user = Context::$tenantDbUser;
+                $pass = Context::$tenantDbPass;
+            }
+        }
+
+        $dsn = 'mysql:host=' . $host . ';dbname=' . $db_name . ';charset=utf8';
 
         $options = [
             PDO::ATTR_PERSISTENT => false, // Finita l'esecuzione dello script PHP chiude la connessione con il db
@@ -22,12 +36,11 @@ class Database
             PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"
         ];
 
-        try{
+        try {
             $this->db = new PDO($dsn, $user, $pass, $options);
-        }catch (PDOException $e){
+        } catch (PDOException $e) {
             $this->error = $e->getMessage();
-            // Loggare l'errore su file e inviare messaggio generico
-            die("Errore critico db: " . $this->error);
+            Response::response("Internal Server Error", 500, "Database connection error");
         }
     }
 

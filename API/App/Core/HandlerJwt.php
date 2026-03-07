@@ -9,34 +9,54 @@ use Exception;
 
 class HandlerJwt
 {
-    public function validateJwt($token)
+    public function generateAccessToken($userId, $tenantId)
     {
-        if(empty($token)) {
-            throw new Exception("Token not given", 400);
-        }
-
-        try {
-            return JWT::decode($token, new Key(SECRET_KEY, "HS256"));
-        } catch (ExpiredException $e) {
-            throw $e;
-        } catch (\Throwable $e) {
-            throw new Exception("Invalid or corrupted token");
-        }
-    }
-
-    public function generateJwt($data)
-    {
-        $payload = [
-            'iss' => JWT_ISSUER, 
+        $payload = 
+        [
+            'iss' => JWT_ISSUER,
             'iat' => time(),
-            'exp' => time() + 1200, 
-            'sub' => $data['user_id'],
-            'jti' => $data['refresh_token_id'],
+            'exp' => time() + 900, // durata di 15 minuti
+            'sub' => $userId,
             'data' => [
-                "tenant_id" => $data['tenant_id'],
+                "tenant_id" => $tenantId,
+                "type" => "access"
             ]
         ];
 
         return JWT::encode($payload, SECRET_KEY, 'HS256');
     }
+
+    public function generateRefreshToken($userId, $tenantId, $jti)
+    {
+        $payload = 
+        [
+            'iss' => JWT_ISSUER,
+            'iat' => time(),
+            'exp' => time() + (3600 * 24 * 7), // durata di 7 giorni
+            'sub' => $userId,
+            'data' => [
+                "tenant_id" => $tenantId,
+                "type" => "refresh"
+            ]
+        ];
+
+        return JWT::encode($payload, SECRET_KEY, 'HS256');
+    }
+
+    public function validateJwt($token)
+    {
+        if(empty($token)) {
+            throw new Exception("Token not provided", 400);
+        }
+
+        try {
+            return JWT::decode($token, new Key(SECRET_KEY, '"HS256'));
+        } catch (ExpiredException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            throw new Exception("Invalid or corrupted token", 401);
+        }
+    }
+
+    
 }

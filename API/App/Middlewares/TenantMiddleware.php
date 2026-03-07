@@ -30,7 +30,7 @@ class TenantMiddleware {
     }
 
     private static function loadTenantFromMaster($subdomain) {
-        $db = new Database();
+        $db = new Database(DB_HOST, DB_NAME, DB_USER, DB_PASS);
         $company_db = new Company($db);
 
         $tenant = $company_db->findBySubdomain($subdomain);

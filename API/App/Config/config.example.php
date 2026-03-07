@@ -6,6 +6,7 @@ define('DB_PASS', '****');
 define('DB_NAME', '****');
 
 define('DOMAIN_NAME', 'ousmanejr17.it');
+define('FRONTEND_DOMAIN_NAME', 'https://www.tuodominio.it');
 
 define('ROOT_FOLDER', '/API/');
 define('ROOT', 'API/');
