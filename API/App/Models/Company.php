@@ -36,7 +36,7 @@ class Company extends Model
         $this->db->query($query);
 
         foreach ($data as $key => $value) {
-            $this->db->bind(":key", $value);
+            $this->db->bind(":$key", $value);
         }
         $this->db->bind(":tenant_id", $tenant_id);
 
@@ -63,6 +63,12 @@ class Company extends Model
     public function findBySubdomain($subdomain){
         $this->db->query("SELECT * FROM Company WHERE Subdomain = :subdomain");
         $this->db->bind(":subdomain", $subdomain);
+        return $this->db->singleResult();
+    }
+
+    public function findByVatNumber($vat_number){
+        $this->db->query("SELECT * FROM Company WHERE VAT_Number = :vat_number");
+        $this->db->bind(":vat_number", $vat_number);
         return $this->db->singleResult();
     }
 }

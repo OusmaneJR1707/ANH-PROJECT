@@ -12,4 +12,6 @@ class Context {
     public static $tenantDbPass = null;
 
     public static $user = null;
+
+    public static $requestBody = [];
 }
