@@ -7,6 +7,7 @@ use App\Core\Context;
 use App\Core\Database;
 use App\Models\Company;
 use App\Models\Plan;
+use App\Models\Subscription;
 
 class AuthController
 {
@@ -31,6 +32,7 @@ class AuthController
         $master_db = new Database();
         $company_db = new Company($master_db);
         $plan_db = new Plan($master_db);
+        $subscription_db = new Subscription($master_db);
 
         $plan_name = $data['plan_name'];
         $subdomain = $data['subdomain'];
@@ -39,8 +41,8 @@ class AuthController
         $dbErrors = [];
 
         // Verifica esistenza piano
-        $result = $plan_db->findByName($plan_name);
-        if(!$result) {
+        $plan = $plan_db->findByName($plan_name);
+        if(!$plan) {
             $dbErrors['plan'] = "The selected plan does not exist";
         }
 
@@ -70,6 +72,109 @@ class AuthController
         } catch (\Exception $e) {
             Response::response("Service Unavailable", 503, $e->getMessage());
             return;
+        }
+
+        try {
+            $master_db->beginTransaction();
+
+            // Preparazione dati da inserire nella tabella del tenant
+            $company_data = [
+                'VAT_Number' => $vat_number,
+                'Name' => $data['tenant_name'],
+                'Subdomain' => $subdomain,
+                'DB_Type' => $data['db_type']
+            ];
+
+            if(!empty($data['province'])) {
+                $company_data['Province'] = $data['province'];
+            }
+
+            if(!empty($data['city'])) {
+                $company_data['City'] = $data['city'];
+            }
+
+            if(!empty($data['street'])) {
+                $company_data['Street'] = $data['street'];
+            }
+
+            if(!empty($data['suite'])) {
+                $company_data['Suite'] = $data['suite'];
+            }
+
+            if(!empty($data['logo'])) {
+                $company_data['Logo_URL'] = $data['logo'];
+            }
+
+            if(!empty($data['primary_color'])) {
+                $company_data['Primary_Color'] = $data['primary_color'];
+            }
+
+            $tenant_id = $company_db->create($company_data);
+
+            $start_date = date('Y-m-d');
+            $duration = $plan->Duration_Days;
+            $end_date = date('Y-m-d', strtotime("+$duration days"));
+
+            $subscription_db->create([
+                'Tenant_ID' => $tenant_id,
+                'Plan_Name' => $plan_name,
+                'Start_Date' => $start_date,
+                'End_Date' => $end_date
+            ]);
+
+            // Creazione del database del tenant
+            $tenant_db_name = $subdomain . 'db';
+            $tenant_db_user = $subdomain;
+            $tenant_db_pass = hash_hmac('sha256', $subdomain, TENANT_SECRET_KEY);
+
+            $master_db->query("CREATE DATABASE IF NOT EXISTS `$tenant_db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            $master_db->execute();
+
+            $master_db->query("CREATE USER IF NOT EXISTS '$tenant_db_user'@'localhost' IDENTIFIED BY '$tenant_db_pass'");
+            $master_db->execute();
+
+            $master_db->query("GRANT ALL PRIVILEGES ON `$tenant_db_name`.* TO '$tenant_db_user'@'localhost'");
+            $master_db->execute();
+
+            $master_db->query("FLUSH PRIVILEGES");
+            $master_db->execute();
+
+            $this->setupTenantDatabase($tenant_db_name, $tenant_db_user, $tenant_db_pass, $data);
+
+            if ($master_db->inTransaction()) {
+                $master_db->commitTransaction(); 
+            }
+
+            Response::response("Created", 201, "Tenant environment created successfully", [
+                'tenant_url' => 'https://' . $subdomain . '.tuodominio.it',
+                'tenant_id'  => $tenant_id 
+            ]);
+        } catch (\Exception $e) {
+
+            if ($master_db->inTransaction()) {
+                $master_db->rollbackTransaction();
+            }
+
+            // Rimuovo manualmente il database se era stato creato
+            if (isset($tenant_db_name)) {
+                $master_db->query("DROP DATABASE IF EXISTS `$tenant_db_name`");
+                $master_db->execute();
+            }
+
+            // Rimuovo l'utente se era stato creato
+            if (isset($tenant_db_user)) {
+                $master_db->query("DROP USER IF EXISTS '$tenant_db_user'@'localhost'");
+                $master_db->execute();
+            }
+
+            // Rimuovo il tenant
+            if (isset($tenant_id)) {
+                $company_db->delete($tenant_id);
+            }
+
+            error_log("FALLIMENTO CRITICO PROVISIONING TENANT [$subdomain]. Rollback manuale eseguito. Causa: " . $e->getMessage());
+
+            Response::response("Internal Server Error", 500, "An error occurred while setting up your environment. No data was saved.");
         }
     }
 
@@ -134,6 +239,10 @@ class AuthController
 
         if (!preg_match('/^[a-z0-9-]+$/', $subdomain)) {
             $errors['subdomain'] = "Subdomain can contain only lowercase letters, numbers and dashes";
+        }
+
+        if (strlen($subdomain) > 32) {
+            $errors['subdomain'] = "Subdomain cannot exceed 32 characters";
         }
 
         if (in_array($subdomain, $reservedSubdomains)) {
@@ -227,5 +336,23 @@ class AuthController
 
             throw new \Exception("The European VIES service is temporarily unavailable");
         }
+    }
+
+    private function setupTenantDatabase($db_name, $db_user, $db_pass, $data)
+    {
+        $host = defined('DB_HOST') ? DB_HOST : 'localhost';
+        $tenant_db = new Database($host, $db_name, $db_user, $db_pass);
+
+        $schema_path = __DIR__ . '/../Database/tenant_schema.sql';
+
+        if(!file_exists($schema_path)) {
+            throw new \Exception("SQL schema file not found in: " . $schema_path);
+        }
+
+        $schema_sql = file_get_contents($schema_path);
+
+        $tenant_db->getPDO()->exec($schema_sql);
+
+        // proseguire
     }
 }

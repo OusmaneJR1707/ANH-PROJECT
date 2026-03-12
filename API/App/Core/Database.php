@@ -70,7 +70,6 @@ class Database
         return $this->db->inTransaction();
     }
 
-
     // Esecuzione query
     public function query($sql)
     {
