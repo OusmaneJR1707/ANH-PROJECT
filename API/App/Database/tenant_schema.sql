@@ -8,7 +8,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE IF NOT EXISTS Employee (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Email VARCHAR(255) UNIQUE NOT NULL,
-    Password_Hash CHAR(80) NOT NULL,
+    Password_Hash VARCHAR(255) NOT NULL,
     First_Name VARCHAR(100) NOT NULL,
     Last_Name VARCHAR(100) NOT NULL,
     Status ENUM('active', 'inactive', 'pending', 'suspended') DEFAULT 'active',
@@ -201,3 +201,5 @@ CREATE TABLE IF NOT EXISTS Personal_Reports (
 
 -- Riabilitiamo i controlli
 SET FOREIGN_KEY_CHECKS = 1;
+
+INSERT INTO Role (Name, Description) VALUES ('Admin', 'Global System Administrator');

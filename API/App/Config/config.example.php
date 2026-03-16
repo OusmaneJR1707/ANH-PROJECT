@@ -12,6 +12,7 @@ define('ROOT_FOLDER', '/API/');
 define('ROOT', 'API/');
 
 define('TENANT_SECRET_KEY', '****');
+define('PEPPER_SECRET_KEY', '*****');
 
 define("SECRET_KEY", '****');
 define("JWT_ISSUER", "****");

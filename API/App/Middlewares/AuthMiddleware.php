@@ -11,6 +11,7 @@ use Exception;
 class AuthMiddleware 
 {
     private $tenantWhitelist = [
+        'ping',
         'auth/login', 
         'auth/register'
     ];

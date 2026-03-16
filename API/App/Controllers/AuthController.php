@@ -8,9 +8,19 @@ use App\Core\Database;
 use App\Models\Company;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\Employee;
+use App\Models\Role;
+use App\Models\Project;
+use App\Models\ProjectMember;
 
 class AuthController
 {
+    public function ping()
+    {
+        $isMaster = Context::$isMaster ? 'YES' : 'NO';
+        \App\Core\Response::response("OK", 200, "Pong! APIs working. Master DB: " . $isMaster);
+    }
+
     public function registerTenant()
     {
         if (!Context::$isMaster) {
@@ -174,7 +184,7 @@ class AuthController
 
             error_log("FALLIMENTO CRITICO PROVISIONING TENANT [$subdomain]. Rollback manuale eseguito. Causa: " . $e->getMessage());
 
-            Response::response("Internal Server Error", 500, "An error occurred while setting up your environment. No data was saved.");
+            Response::response("Internal Server Error", 500, "DEBUG ERRORE: " . $e->getMessage());
         }
     }
 
@@ -194,9 +204,6 @@ class AuthController
         $admin_password = $data['admin_password'];
 
         // Campi opzionali
-        $province = $data['province'];
-        $primary_color = $data['primary_color'];
-        $logo_url = $data['logo'];
 
         // Controllo partita IVA
         if (empty($vat_number)) {
@@ -292,15 +299,15 @@ class AuthController
         }
 
         // Controllo sui campi opzionali
-        if (!empty($province) && !preg_match('/^[A-Za-z]{2}$/', $province)) {
+        if (isset($data['province']) && !empty($province) && !preg_match('/^[A-Za-z]{2}$/', $province)) {
             $errors['province'] = "The province must be a 2-letter acronym";
         }
 
-        if (!empty($primary_color) && !preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $primary_color)) {
+        if (isset($data['primary_color']) && !empty($primary_color) && !preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $primary_color)) {
             $errors['primary_color'] = "Color must be a valid HEX format";
         }
 
-        if (!empty($logo_url)) {
+        if (isset($data['logo']) && !empty($logo_url)) {
             if (!filter_var($logo_url, FILTER_VALIDATE_URL) && !preg_match('/^data:image\/(jpeg|png|gif|svg\+xml);base64,/', $logo_url)) {
                 $errors['logo'] = "The logo must be a valid URL or a correct base64 string";
             }
@@ -353,6 +360,43 @@ class AuthController
 
         $tenant_db->getPDO()->exec($schema_sql);
 
-        // proseguire
+        // Istanze dei model per proseguire
+        $employee_db = new Employee($tenant_db);
+        $role_db = new Role($tenant_db);
+        $project_db = new Project($tenant_db);
+        $projectMember_db = new ProjectMember($tenant_db);
+
+        // Creazione dell'admin
+
+        $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
+        $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT); // aggiunge il salt ed esegue l'hash
+
+        $admin_id = $employee_db->create([
+            'Email' => $data['admin_email'],
+            'Password_Hash' => $hashed_password,
+            'First_Name' => $data['admin_firstname'],
+            'Last_name' => $data['admin_lastname'],
+            'Status' => 'active'
+        ]);
+
+        $adminRole = $role_db->findByName('Admin');
+
+        if(!$adminRole) {
+            throw new \Exception("Critical error: admin role not found");
+        }
+
+        $role_id = $adminRole->ID;
+
+        $project_id = $project_db->create([
+            'Title' => 'Admin',
+            'Description' => 'Project reserved for the global management of the company',
+            'Status' => 'In progress'
+        ]);
+
+        $projectMember_db->create([
+            'Employee_ID' => $admin_id,
+            'Project_ID' => $project_id,
+            'Role_ID' => $role_id
+        ]);
     }
 }
