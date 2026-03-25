@@ -368,35 +368,41 @@ class AuthController
 
         // Creazione dell'admin
 
-        $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
-        $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT); // aggiunge il salt ed esegue l'hash
+        try {
+            $tenant_db->beginTransaction();
 
-        $admin_id = $employee_db->create([
-            'Email' => $data['admin_email'],
-            'Password_Hash' => $hashed_password,
-            'First_Name' => $data['admin_firstname'],
-            'Last_name' => $data['admin_lastname'],
-            'Status' => 'active'
-        ]);
+            $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
+            $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT); // aggiunge il salt ed esegue l'hash
 
-        $adminRole = $role_db->findByName('Admin');
+            $admin_id = $employee_db->create([
+                'Email' => $data['admin_email'],
+                'Password_Hash' => $hashed_password,
+                'First_Name' => $data['admin_firstname'],
+                'Last_name' => $data['admin_lastname'],
+                'Status' => 'active'
+            ]);
 
-        if(!$adminRole) {
-            throw new \Exception("Critical error: admin role not found");
+            $adminRole = $role_db->findByName('Admin');
+            if(!$adminRole) {
+                throw new \Exception("Critical error: admin role not found");
+            }
+
+            $adminProject = $project_db->findByTitle('Admin');
+            if(!$adminProject) {
+                throw new \Exception("Critical error: admin project not found in default schema");
+            }
+
+            $projectMember_db->create([
+                'Employee_ID' => $admin_id,
+                'Project_ID' => $adminProject->ID,
+                'Role_ID' => $adminRole->ID
+            ]);
+
+            $tenant_db->commitTransaction();
+        } catch (\Exception $e) {
+            $tenant_db->rollbackTransaction();
+
+            throw $e;
         }
-
-        $role_id = $adminRole->ID;
-
-        $project_id = $project_db->create([
-            'Title' => 'Admin',
-            'Description' => 'Project reserved for the global management of the company',
-            'Status' => 'In progress'
-        ]);
-
-        $projectMember_db->create([
-            'Employee_ID' => $admin_id,
-            'Project_ID' => $project_id,
-            'Role_ID' => $role_id
-        ]);
     }
 }

@@ -24,4 +24,11 @@ class Project extends Model
         $this->db->execute();
         return $this->db->lastInsertId();
     }
+
+    public function findByTitle($title)
+    {
+        $this->db->query("SELECT * FROM Project WHERE Title = :title");
+        $this->db->bind(":title", $title);
+        return $this->db->singleResult();
+    }
 }
