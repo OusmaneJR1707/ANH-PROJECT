@@ -133,7 +133,7 @@ class AuthController
             ]);
 
             // Creazione del database del tenant
-            $tenant_db_name = $subdomain . 'db';
+            $tenant_db_name = 'anhproject_' . $subdomain . 'db';
             $tenant_db_user = $subdomain;
             $tenant_db_pass = hash_hmac('sha256', $subdomain, TENANT_SECRET_KEY);
 

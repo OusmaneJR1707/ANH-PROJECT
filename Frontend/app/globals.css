@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* le classi come 'dark:bg-black' verranno applicate solo se il tag <html> o <body> hanno la classe "dark" */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  scroll-behavior: smooth;
+}

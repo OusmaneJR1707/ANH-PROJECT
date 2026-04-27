@@ -203,3 +203,4 @@ CREATE TABLE IF NOT EXISTS Personal_Reports (
 SET FOREIGN_KEY_CHECKS = 1;
 
 INSERT INTO Role (Name, Description) VALUES ('Admin', 'Global System Administrator');
+INSERT INTO Project (Title, Description, Status) VALUES ('Admin', 'Project reserved for the global management of the company', 'In progress');
