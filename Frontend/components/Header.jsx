@@ -28,7 +28,7 @@ export default function Header() {
     };
 
     const navLinks = [
-        { name: 'Funzionalità', href: '#funzionalità' },
+        { name: 'Funzionalità', href: '#funzionalita' },
         { name: 'Piani', href: '#piani' },
         { name: 'Demo', href: '#demo' },
         { name: 'Contatti', href: '#contatti' }

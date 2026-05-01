@@ -11,4 +11,9 @@ class Plan extends Model
         $this->db->bind(":plan_name", $plan_name);
         return $this->db->singleResult();
     }
+
+    public function findAll() {
+        $this->db->query("SELECT * FROM Plan");
+        return $this->db->resultObj();
+    }
 }

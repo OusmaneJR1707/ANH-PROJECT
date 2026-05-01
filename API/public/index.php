@@ -26,6 +26,8 @@ $router = new Router();
 
 $router->get('ping', [\App\Controllers\AuthController::class, 'ping']);
 
+$router->get('plans', [\App\Controllers\PlanController::class, 'getPlans']);
+
 $router->post('auth/register', [\App\Controllers\AuthController::class, 'registerTenant']);
 
 $router->run();

@@ -12,6 +12,7 @@ class AuthMiddleware
 {
     private $tenantWhitelist = [
         'ping',
+        'plans',
         'auth/login', 
         'auth/register'
     ];
