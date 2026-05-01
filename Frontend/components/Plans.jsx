@@ -84,7 +84,7 @@ export default function Plans({ initialPlans }) {
         </div>
 
         {/* Pulsante "Confronta tutti i piani" */}
-        <div className="mt-16 flex justify-center">
+        <div className="mt-16 flex flex-col items-center justify-center gap-6">
           <Link 
             href="/piani" 
             className="inline-flex items-center gap-2 text-base font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -93,6 +93,13 @@ export default function Plans({ initialPlans }) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
+          </Link>
+
+          <Link 
+            href="#contatti" 
+            className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors underline underline-offset-4"
+          >
+            Hai bisogno di un piano personalizzato? Contatta il nostro team
           </Link>
         </div>
 

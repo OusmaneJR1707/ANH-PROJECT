@@ -2,6 +2,9 @@ import Header from '../components/Header';
 import Hero from '../components/Hero';
 import Features from '../components/Features';
 import Plans from '../components/Plans';
+import Demo from '../components/Demo';
+import Contact from '@/components/Contact';
+import Footer from '@/components/Footer';
 
 // Questa funzione gira esclusivamente sul server Node.js di Next
 // Il browser dell'utente non vedrà mai questo codice
@@ -59,10 +62,10 @@ export default async function Home() {
   const featuredPlans = allPlans.filter(p => p.isFeatured);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0f1a] transition-colors duration-300">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[#0a0f1a] transition-colors duration-300">
       <Header />
 
-      <main>
+      <main className="grow">
         <Hero />
         
         <Features />
@@ -70,9 +73,11 @@ export default async function Home() {
         {/* 6. Passiamo i dati puliti al componente visivo */}
         <Plans initialPlans={featuredPlans} />
         
-        <div id="demo" className="h-20" />
-        <div id="contatti" className="h-20" />
+        <Demo />
+        <Contact />
       </main>
+
+      <Footer />
     </div>
   );
 }
