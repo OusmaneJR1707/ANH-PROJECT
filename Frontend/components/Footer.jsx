@@ -11,7 +11,7 @@ export default function Footer() {
           
           {/* Colonna 1: Brand e Info */}
           <div className="md:col-span-2">
-            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white mb-4 inline-flex">
+            <Link href="/" className="flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white mb-4">
               <div className="w-8 h-8 rounded bg-blue-500 flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M4 10h3v10H4zM10 4h3v16h-3zM16 14h3v6h-3z" />

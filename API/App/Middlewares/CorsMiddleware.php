@@ -6,7 +6,7 @@ class CorsMiddleware
 {
     public static function handle()
     {
-        $allowedOrigins = ['http:://localhost:3000', 'https://www.tuodominio.it'];
+        $allowedOrigins = ['http://localhost:3000', 'https://www.tuodominio.it', 'http://localhost:3001'];
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
         if (in_array($origin, $allowedOrigins)) {

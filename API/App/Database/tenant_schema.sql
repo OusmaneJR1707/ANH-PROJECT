@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS Employee (
     First_Name VARCHAR(100) NOT NULL,
     Last_Name VARCHAR(100) NOT NULL,
     Status ENUM('active', 'inactive', 'pending', 'suspended') DEFAULT 'active',
-    Profile_Picture VARCHAR(255),
+    Profile_Picture LONGTEXT NULL,
     CONSTRAINT chk_email_format CHECK (Email LIKE '%_@__%.__%')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

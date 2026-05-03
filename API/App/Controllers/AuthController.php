@@ -13,6 +13,10 @@ use App\Models\Role;
 use App\Models\Project;
 use App\Models\ProjectMember;
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+use PHPMailer\PHPMailer\SMTP;
+
 class AuthController
 {
     public function ping()
@@ -133,9 +137,12 @@ class AuthController
             ]);
 
             // Creazione del database del tenant
-            $tenant_db_name = 'anhproject_' . $subdomain . 'db';
-            $tenant_db_user = $subdomain;
-            $tenant_db_pass = hash_hmac('sha256', $subdomain, TENANT_SECRET_KEY);
+            $db_safe_identifier = str_replace('-', '_', $subdomain);
+
+            // Creazione del database del tenant
+            $tenant_db_name = 'anhproject_' . $db_safe_identifier . '_db';
+            $tenant_db_user = $db_safe_identifier;
+            $tenant_db_pass = hash_hmac('sha256', $db_safe_identifier, TENANT_SECRET_KEY);
 
             $master_db->query("CREATE DATABASE IF NOT EXISTS `$tenant_db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
             $master_db->execute();
@@ -155,6 +162,60 @@ class AuthController
                 $master_db->commitTransaction(); 
             }
 
+            try {
+                $to = $data['admin_email'];
+                
+                // Inizializza PHPMailer (true abilita le eccezioni)
+                $mail = new PHPMailer(true);
+
+                // Configurazione Server SMTP
+                $mail->isSMTP();
+                $mail->Host       = SMTP_HOST;
+                $mail->SMTPAuth   = true;
+                $mail->Username   = SMTP_USER;
+                $mail->Password   = SMTP_PASS;
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Consigliato per la porta 587
+                $mail->Port       = SMTP_PORT;
+
+                // Mittente e Destinatario
+                $mail->setFrom(SMTP_USER, 'ANH-Project');
+                $mail->addAddress($to, $data['admin_firstname'] . ' ' . $data['admin_lastname']);
+                $mail->addReplyTo('supporto@anh-project.it', 'Supporto ANH-Project');
+
+                // Contenuto della Mail
+                $mail->isHTML(true); // Imposta il formato email a HTML
+                $mail->Subject = "Benvenuto in ANH-Project, " . $data['admin_firstname'] . "!";
+                
+                // Corpo dell'email in HTML
+                $mail->Body    = "
+                    <div style='font-family: Arial, sans-serif; color: #333;'>
+                        <h2>Ciao {$data['admin_firstname']},</h2>
+                        <p>Il tuo workspace per <strong>{$data['tenant_name']}</strong> è stato creato con successo.</p>
+                        <p>Puoi accedere al tuo pannello di controllo cliccando sul link qui sotto:</p>
+                        <p>
+                            <a href='https://{$subdomain}.anh-project.it' style='display: inline-block; padding: 10px 20px; background-color: #3B82F6; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>
+                                Accedi al Workspace
+                            </a>
+                        </p>
+                        <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
+                        <p style='font-size: 12px; color: #777;'>Se non hai richiesto questa registrazione, puoi ignorare questa email.</p>
+                    </div>
+                ";
+                
+                // Testo semplice di fallback per i client mail molto vecchi
+                $mail->AltBody = "Ciao {$data['admin_firstname']},\n\nIl tuo workspace per {$data['tenant_name']} è pronto.\nAccedi qui: https://{$subdomain}.anh-project.it";
+
+                // Invia l'email!
+                $mail->send();
+
+            } catch (PHPMailerException $mailError) {
+                // Logghiamo l'errore specifico di PHPMailer
+                error_log("Errore PHPMailer durante l'invio a $to: " . $mail->ErrorInfo);
+            } catch (\Exception $e) {
+                error_log("Errore generico durante l'invio email a $to: " . $e->getMessage());
+            }
+
+            // Risposta finale a Next.js
             Response::response("Created", 201, "Tenant environment created successfully", [
                 'tenant_url' => 'https://' . $subdomain . '.tuodominio.it',
                 'tenant_id'  => $tenant_id 
@@ -193,17 +254,15 @@ class AuthController
         $errors = [];
 
         // Campi obbligatori
-        $vat_number = $data['vat_number'];
-        $tenant_name = $data['tenant_name'];
-        $subdomain = $data['subdomain'];
-        $db_type = $data['db_type'];
+        $vat_number = $data['vat_number'] ?? '';
+        $tenant_name = $data['tenant_name'] ?? '';
+        $subdomain = $data['subdomain'] ?? '';
+        $db_type = $data['db_type'] ?? '';
         $plan_name = $data['plan_name'];
-        $admin_firstname = $data['admin_firstname'];
-        $admin_lastname = $data['admin_lastname'];
-        $admin_email = $data['admin_email'];
-        $admin_password = $data['admin_password'];
-
-        // Campi opzionali
+        $admin_firstname = $data['admin_firstname'] ?? '';
+        $admin_lastname = $data['admin_lastname'] ?? '';
+        $admin_email = $data['admin_email'] ?? '';
+        $admin_password = $data['admin_password'] ?? '';
 
         // Controllo partita IVA
         if (empty($vat_number)) {
@@ -299,17 +358,29 @@ class AuthController
         }
 
         // Controllo sui campi opzionali
-        if (isset($data['province']) && !empty($province) && !preg_match('/^[A-Za-z]{2}$/', $province)) {
+        if (!empty($data['province']) && !preg_match('/^[A-Za-z]{2}$/', $data['province'])) {
             $errors['province'] = "The province must be a 2-letter acronym";
         }
 
-        if (isset($data['primary_color']) && !empty($primary_color) && !preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $primary_color)) {
+        if (!empty($data['primary_color']) && !preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $data['primary_color'])) {
             $errors['primary_color'] = "Color must be a valid HEX format";
         }
 
-        if (isset($data['logo']) && !empty($logo_url)) {
-            if (!filter_var($logo_url, FILTER_VALIDATE_URL) && !preg_match('/^data:image\/(jpeg|png|gif|svg\+xml);base64,/', $logo_url)) {
+        if (!empty($data['logo'])) {
+            $logo_url = $data['logo'];
+            if (!filter_var($logo_url, FILTER_VALIDATE_URL) && !preg_match('/^data:image\/(jpeg|png|webp|gif|svg\+xml);base64,/', $logo_url)) {
                 $errors['logo'] = "The logo must be a valid URL or a correct base64 string";
+            } elseif (strlen($logo_url) > 2800000) {
+                $errors['logo'] = "The logo exceeds the maximum size of 2MB";
+            }
+        }
+
+        if (!empty($data['admin_profile_picture'])) {
+            $pic = $data['admin_profile_picture'];
+            if (!filter_var($pic, FILTER_VALIDATE_URL) && !preg_match('/^data:image\/(jpeg|png|webp|gif|svg\+xml);base64,/', $pic)) {
+                $errors['admin_profile_picture'] = "The profile picture must be a valid URL or a correct base64 string";
+            } elseif (strlen($pic) > 2800000) {
+                $errors['admin_profile_picture'] = "The profile picture exceeds the maximum size of 2MB";
             }
         }
 
@@ -378,8 +449,9 @@ class AuthController
                 'Email' => $data['admin_email'],
                 'Password_Hash' => $hashed_password,
                 'First_Name' => $data['admin_firstname'],
-                'Last_name' => $data['admin_lastname'],
-                'Status' => 'active'
+                'Last_Name' => $data['admin_lastname'],
+                'Status' => 'active',
+                'Profile_Picture' => isset($data['admin_profile_picture']) ? $data['admin_profile_picture'] : null
             ]);
 
             $adminRole = $role_db->findByName('Admin');

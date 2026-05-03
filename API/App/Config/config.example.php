@@ -16,3 +16,8 @@ define('PEPPER_SECRET_KEY', '*****');
 
 define("SECRET_KEY", '****');
 define("JWT_ISSUER", "****");
+
+define('SMTP_HOST', 'smtp.gmail.com');
+define('SMTP_USER', 'tuamail@gmail.com');
+define('SMTP_PASS', 'la-tua-password-per-le-app'); // 16 caratteri generati da Google
+define('SMTP_PORT', 587);

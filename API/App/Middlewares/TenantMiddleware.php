@@ -50,10 +50,12 @@ class TenantMiddleware {
         Context::$tenantId = $tenant->Tenant_ID;
         Context::$tenantName = $tenant->Name;
 
-        Context::$tenantDbName = "anhproject_" . $subdomain . "_db";
-        Context::$tenantDbUser = $subdomain;
+        $db_safe_identifier = str_replace('-', '_', $subdomain);
 
-        $secure_hash = hash_hmac('sha256', $subdomain, TENANT_SECRET_KEY);
+        Context::$tenantDbName = "anhproject_" . $db_safe_identifier . "_db";
+        Context::$tenantDbUser = $db_safe_identifier;
+
+        $secure_hash = hash_hmac('sha256', $db_safe_identifier, TENANT_SECRET_KEY);
         Context::$tenantDbPass = $secure_hash;
     }
 }
