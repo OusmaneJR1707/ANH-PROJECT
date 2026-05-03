@@ -1,4 +1,5 @@
 import "./globals.css";
+import { Toaster } from 'sonner';
 
 export const metadata = {
   title: "ANH-Project",
@@ -29,7 +30,11 @@ export default function RootLayout({ children }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript}} />
       </head>
-      <body className="bg-white dark:bg-[#0a0f1a] text-gray-900 dark:text-white transition-colors duration-300">{children}</body>
+      
+      <body className="bg-white dark:bg-[#0a0f1a] text-gray-900 dark:text-white transition-colors duration-300">
+        {children}
+        <Toaster position="bottom-right" richColors />
+      </body>
     </html>
   );
 }
