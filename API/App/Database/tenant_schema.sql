@@ -8,11 +8,12 @@ SET FOREIGN_KEY_CHECKS = 0;
 CREATE TABLE IF NOT EXISTS Employee (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Email VARCHAR(255) UNIQUE NOT NULL,
-    Password_Hash VARCHAR(255) NOT NULL,
+    Password_Hash VARCHAR(255),
     First_Name VARCHAR(100) NOT NULL,
     Last_Name VARCHAR(100) NOT NULL,
     Status ENUM('active', 'inactive', 'pending', 'suspended') DEFAULT 'active',
     Profile_Picture LONGTEXT NULL,
+    `Auth_Provider` VARCHAR(50) DEFAULT 'local',
     CONSTRAINT chk_email_format CHECK (Email LIKE '%_@__%.__%')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

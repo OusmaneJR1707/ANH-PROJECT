@@ -14,7 +14,8 @@ class AuthMiddleware
         'ping',
         'plans',
         'auth/login', 
-        'auth/register'
+        'auth/register',
+        'auth/google'
     ];
 
     public function handle() {

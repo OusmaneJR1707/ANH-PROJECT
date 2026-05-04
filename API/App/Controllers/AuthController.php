@@ -34,21 +34,65 @@ class AuthController
 
         $data = Context::$requestBody;
 
-        // Validazione formale dei dati
-        $errors = $this->validateRegistrationData($data);
+        $errors = $this->validateRegistrationData($data, false);
 
-        // Controllo se sono stati trovati errori, in quel caso restituisco 400 e l'array degli errori a NextJS
         if(!empty($errors)) {
             Response::response("Bad Request", 400, "Invalid data", $errors);
             return;
         }
 
+        $this->processRegistration($data, false);
+    }
+
+    public function registerGoogle(){
+        if (!Context::$isMaster) {
+            Response::response("Forbidden", 403, "Company registration is only permitted on the main domain");
+            exit();
+        }
+
+        $data = Context::$requestBody;
+
+        if (empty($data['google_token'])) {
+            Response::response("Bad Request", 400, "Google Token mancante");
+            return;
+        }
+
+        try {
+            $client = new \Google_Client(['client_id' => GOOGLE_CLIENT_ID]);
+            $payload = $client->verifyIdToken($data['google_token']);
+
+            if ($payload) {
+                $data['admin_email'] = $payload['email'];
+                $data['admin_firstname'] = $payload['given_name'] ?? "Admin";
+                $data['admin_lastname'] = $payload['family_name'] ?? "ND";
+                $data['admin_profile_picture'] = $payload['picture'] ?? null;
+
+                $errors = $this->validateRegistrationData($data, true);
+
+                if(!empty($errors)) {
+                    Response::response("Bad Request", 400, "Invalid data", $errors);
+                    return;
+                }
+
+                $this->processRegistration($data, true);
+            } else {
+                Response::response("Unauthorized", 401, "Firma del token Google non valida.");
+            }
+        } catch (\Exception $e) {
+            error_log("Errore Google OAuth: " . $e->getMessage());
+            Response::response("Internal Server Error", 500, "Errore durante la verifica dell'account Google.");
+        }
+    }
+
+    private function processRegistration($data, $isGoogleAuth)
+    {
         $master_db = new Database();
         $company_db = new Company($master_db);
         $plan_db = new Plan($master_db);
         $subscription_db = new Subscription($master_db);
 
         $plan_name = $data['plan_name'];
+        $db_type = $data['db_type'];
         $subdomain = $data['subdomain'];
         $vat_number = $data['vat_number'];
 
@@ -60,13 +104,16 @@ class AuthController
             $dbErrors['plan'] = "The selected plan does not exist";
         }
 
+        if($db_type == "hosted" && !$plan->Cloud_Managed){
+            $dbErrors['db_type'] = "The selected plan does not support hosted databases. Please select 'private' or upgrade your plan.";
+        }
+
         // Verifica se il sottodominio è già in uso
         $result = $company_db->findBySubdomain($subdomain);
         if($result) {
             $dbErrors['subdomain'] = "Subdomain already in use";
         }
 
-        // Verifica se la partita IVA è già presente
         $result = $company_db->findByVatNumber($vat_number);
         if($result) {
             $dbErrors['vat_number'] = "VAT number is already registered";
@@ -99,29 +146,12 @@ class AuthController
                 'DB_Type' => $data['db_type']
             ];
 
-            if(!empty($data['province'])) {
-                $company_data['Province'] = $data['province'];
-            }
-
-            if(!empty($data['city'])) {
-                $company_data['City'] = $data['city'];
-            }
-
-            if(!empty($data['street'])) {
-                $company_data['Street'] = $data['street'];
-            }
-
-            if(!empty($data['suite'])) {
-                $company_data['Suite'] = $data['suite'];
-            }
-
-            if(!empty($data['logo'])) {
-                $company_data['Logo_URL'] = $data['logo'];
-            }
-
-            if(!empty($data['primary_color'])) {
-                $company_data['Primary_Color'] = $data['primary_color'];
-            }
+            if(!empty($data['province'])) $company_data['Province'] = $data['province'];
+            if(!empty($data['city'])) $company_data['City'] = $data['city'];
+            if(!empty($data['street'])) $company_data['Street'] = $data['street'];
+            if(!empty($data['suite'])) $company_data['Suite'] = $data['suite'];
+            if(!empty($data['logo'])) $company_data['Logo_URL'] = $data['logo'];
+            if(!empty($data['primary_color'])) $company_data['Primary_Color'] = $data['primary_color'];
 
             $tenant_id = $company_db->create($company_data);
 
@@ -136,10 +166,7 @@ class AuthController
                 'End_Date' => $end_date
             ]);
 
-            // Creazione del database del tenant
             $db_safe_identifier = str_replace('-', '_', $subdomain);
-
-            // Creazione del database del tenant
             $tenant_db_name = 'anhproject_' . $db_safe_identifier . '_db';
             $tenant_db_user = $db_safe_identifier;
             $tenant_db_pass = hash_hmac('sha256', $db_safe_identifier, TENANT_SECRET_KEY);
@@ -156,37 +183,33 @@ class AuthController
             $master_db->query("FLUSH PRIVILEGES");
             $master_db->execute();
 
-            $this->setupTenantDatabase($tenant_db_name, $tenant_db_user, $tenant_db_pass, $data);
+            // Passiamo $isGoogleAuth alla funzione che compila il DB del tenant
+            $this->setupTenantDatabase($tenant_db_name, $tenant_db_user, $tenant_db_pass, $data, $isGoogleAuth);
 
             if ($master_db->inTransaction()) {
                 $master_db->commitTransaction(); 
             }
 
             try {
-                $to = $data['admin_email'];
                 
-                // Inizializza PHPMailer (true abilita le eccezioni)
-                $mail = new PHPMailer(true);
+                $to = $data['admin_email'];
 
-                // Configurazione Server SMTP
+                $mail = new PHPMailer(true);
                 $mail->isSMTP();
                 $mail->Host       = SMTP_HOST;
                 $mail->SMTPAuth   = true;
                 $mail->Username   = SMTP_USER;
                 $mail->Password   = SMTP_PASS;
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Consigliato per la porta 587
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                 $mail->Port       = SMTP_PORT;
 
-                // Mittente e Destinatario
                 $mail->setFrom(SMTP_USER, 'ANH-Project');
                 $mail->addAddress($to, $data['admin_firstname'] . ' ' . $data['admin_lastname']);
                 $mail->addReplyTo('supporto@anh-project.it', 'Supporto ANH-Project');
 
-                // Contenuto della Mail
-                $mail->isHTML(true); // Imposta il formato email a HTML
+                $mail->isHTML(true); 
                 $mail->Subject = "Benvenuto in ANH-Project, " . $data['admin_firstname'] . "!";
                 
-                // Corpo dell'email in HTML
                 $mail->Body    = "
                     <div style='font-family: Arial, sans-serif; color: #333;'>
                         <h2>Ciao {$data['admin_firstname']},</h2>
@@ -197,59 +220,43 @@ class AuthController
                                 Accedi al Workspace
                             </a>
                         </p>
-                        <hr style='border: 0; border-top: 1px solid #eee; margin: 20px 0;'>
-                        <p style='font-size: 12px; color: #777;'>Se non hai richiesto questa registrazione, puoi ignorare questa email.</p>
                     </div>
                 ";
                 
-                // Testo semplice di fallback per i client mail molto vecchi
                 $mail->AltBody = "Ciao {$data['admin_firstname']},\n\nIl tuo workspace per {$data['tenant_name']} è pronto.\nAccedi qui: https://{$subdomain}.anh-project.it";
 
-                // Invia l'email!
                 $mail->send();
 
-            } catch (PHPMailerException $mailError) {
-                // Logghiamo l'errore specifico di PHPMailer
-                error_log("Errore PHPMailer durante l'invio a $to: " . $mail->ErrorInfo);
             } catch (\Exception $e) {
-                error_log("Errore generico durante l'invio email a $to: " . $e->getMessage());
+                error_log("Errore invio email: " . $e->getMessage());
             }
 
-            // Risposta finale a Next.js
             Response::response("Created", 201, "Tenant environment created successfully", [
                 'tenant_url' => 'https://' . $subdomain . '.tuodominio.it',
                 'tenant_id'  => $tenant_id 
             ]);
-        } catch (\Exception $e) {
 
+        } catch (\Exception $e) {
             if ($master_db->inTransaction()) {
                 $master_db->rollbackTransaction();
             }
-
-            // Rimuovo manualmente il database se era stato creato
             if (isset($tenant_db_name)) {
                 $master_db->query("DROP DATABASE IF EXISTS `$tenant_db_name`");
                 $master_db->execute();
             }
-
-            // Rimuovo l'utente se era stato creato
             if (isset($tenant_db_user)) {
                 $master_db->query("DROP USER IF EXISTS '$tenant_db_user'@'localhost'");
                 $master_db->execute();
             }
-
-            // Rimuovo il tenant
             if (isset($tenant_id)) {
                 $company_db->delete($tenant_id);
             }
-
             error_log("FALLIMENTO CRITICO PROVISIONING TENANT [$subdomain]. Rollback manuale eseguito. Causa: " . $e->getMessage());
-
-            Response::response("Internal Server Error", 500, "DEBUG ERRORE: " . $e->getMessage());
+            Response::response("Internal Server Error", 500, "");
         }
     }
 
-    private function validateRegistrationData($data)
+    private function validateRegistrationData($data, $isGoogleAuth)
     {
         $errors = [];
 
@@ -258,7 +265,7 @@ class AuthController
         $tenant_name = $data['tenant_name'] ?? '';
         $subdomain = $data['subdomain'] ?? '';
         $db_type = $data['db_type'] ?? '';
-        $plan_name = $data['plan_name'];
+        $plan_name = $data['plan_name'] ?? '';
         $admin_firstname = $data['admin_firstname'] ?? '';
         $admin_lastname = $data['admin_lastname'] ?? '';
         $admin_email = $data['admin_email'] ?? '';
@@ -348,15 +355,16 @@ class AuthController
             $errors['admin_email'] = "Invalid admin email format";
         }
 
-        $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';
-        if (empty($admin_password)) {
-            $errors['admin_password'] = "Admin password is required";
-        }
+        if (!$isGoogleAuth) {
+            $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';
 
-        if (!preg_match($passwordPattern, $admin_password)) {
-            $errors['admin_password'] = "Password must contain at least 8 characters, one uppercase letter, one number and one special character";
+            if(empty($admin_password)) {
+                $errors['admin_password'] = "Admin password is required";
+            } else if (!preg_match($passwordPattern, $admin_password)) {
+                $errors['admin_password'] = "Password must contain at least 8 characters, one uppercase letter, one number and one special character";
+            }
         }
-
+        
         // Controllo sui campi opzionali
         if (!empty($data['province']) && !preg_match('/^[A-Za-z]{2}$/', $data['province'])) {
             $errors['province'] = "The province must be a 2-letter acronym";
@@ -416,7 +424,7 @@ class AuthController
         }
     }
 
-    private function setupTenantDatabase($db_name, $db_user, $db_pass, $data)
+    private function setupTenantDatabase($db_name, $db_user, $db_pass, $data, $isGoogleAuth)
     {
         $host = defined('DB_HOST') ? DB_HOST : 'localhost';
         $tenant_db = new Database($host, $db_name, $db_user, $db_pass);
@@ -428,7 +436,6 @@ class AuthController
         }
 
         $schema_sql = file_get_contents($schema_path);
-
         $tenant_db->getPDO()->exec($schema_sql);
 
         // Istanze dei model per proseguire
@@ -442,8 +449,12 @@ class AuthController
         try {
             $tenant_db->beginTransaction();
 
-            $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
-            $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT); // aggiunge il salt ed esegue l'hash
+            $hashed_password = null; 
+
+            if (!$isGoogleAuth) {
+                $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
+                $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT);
+            }
 
             $admin_id = $employee_db->create([
                 'Email' => $data['admin_email'],
@@ -451,7 +462,8 @@ class AuthController
                 'First_Name' => $data['admin_firstname'],
                 'Last_Name' => $data['admin_lastname'],
                 'Status' => 'active',
-                'Profile_Picture' => isset($data['admin_profile_picture']) ? $data['admin_profile_picture'] : null
+                'Profile_Picture' => isset($data['admin_profile_picture']) ? $data['admin_profile_picture'] : null,
+                'Auth_Provider' => $isGoogleAuth ? 'google' : 'local'
             ]);
 
             $adminRole = $role_db->findByName('Admin');

@@ -1,5 +1,7 @@
 'use client';
 
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import StepOneCompany from './StepOneCompany';
@@ -220,17 +222,59 @@ export default function RegisterForm() {
         }
     };
 
+    const handleGoogleLogin = async (googleToken) => {
+        try {
+            toast.loading("Verifica con Google in corso...");
+
+            const payload = {
+                tenant_name: formData.tenant_name,
+                subdomain: formData.subdomain,
+                vat_number: formData.vat_number,
+                plan_name: formData.plan_name,
+                db_type: formData.db_type,
+                google_token: googleToken
+            }
+
+            if (formData.province) payload.province = formData.province;
+            if (formData.city) payload.city = formData.city;
+            if (formData.street) payload.street = formData.street;
+            if (formData.suite) payload.suite = formData.suite;
+            if (formData.primary_color) payload.primary_color = formData.primary_color;
+            if (formData.logo) payload.logo = formData.logo;
+
+            const res = await fetch("http://localhost/ANH-PROJECT/API/auth/google", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const json = await res.json();
+            toast.dismiss();
+
+            if (res.ok) {
+                toast.success("Workspace creato con Google! Benvenuto.");
+            } else {
+                toast.error(json.message || "Errore durante la registrazione con Google")
+            }
+        } catch (error) {
+            toast.dismiss();
+            toast.error("Errore di rete durante la connessione ai server");
+        }
+    }
+
     const propsForChildren = {
-        formData, errors, touched, plans, isCloudManaged, handleChange, handleBlur, handleImageUpload, onNext: handleNextStep, setStep, onSubmit: handleSubmit
+        formData, errors, touched, plans, isCloudManaged, handleChange, handleBlur, handleImageUpload, onNext: handleNextStep, setStep, onSubmit: handleSubmit, onGoogleLogin: handleGoogleLogin
     };
 
     return (
-        <div className="max-w-xl w-full bg-white dark:bg-[#0f1623] p-8 sm:p-10 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl relative z-10">
-            {step === 1 ? (
-                <StepOneCompany {...propsForChildren} />
-            ) : (
-                <StepTwoAdmin {...propsForChildren} />
-            )}
-        </div>
+        <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID}>
+            <div className="max-w-xl w-full bg-white dark:bg-[#0f1623] p-8 sm:p-10 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-xl relative z-10">
+                {step === 1 ? (
+                    <StepOneCompany {...propsForChildren} />
+                ) : (
+                    <StepTwoAdmin {...propsForChildren} />
+                )}
+            </div>
+        </GoogleOAuthProvider>
     );
 }

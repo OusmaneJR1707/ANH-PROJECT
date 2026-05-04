@@ -29,5 +29,6 @@ $router->get('ping', [\App\Controllers\AuthController::class, 'ping']);
 $router->get('plans', [\App\Controllers\PlanController::class, 'getPlans']);
 
 $router->post('auth/register', [\App\Controllers\AuthController::class, 'registerTenant']);
+$router->post('auth/google', [\App\Controllers\AuthController::class, 'registerGoogle']);
 
 $router->run();

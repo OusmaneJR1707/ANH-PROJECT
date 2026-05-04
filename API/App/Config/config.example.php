@@ -21,3 +21,5 @@ define('SMTP_HOST', 'smtp.gmail.com');
 define('SMTP_USER', 'tuamail@gmail.com');
 define('SMTP_PASS', 'la-tua-password-per-le-app'); // 16 caratteri generati da Google
 define('SMTP_PORT', 587);
+
+define('GOOGLE_CLIENT_ID', 'IL_TUO_CLIENT_ID_LUNGHISSIMO.apps.googleusercontent.com');
