@@ -14,4 +14,5 @@ class Context {
     public static $user = null;
 
     public static $requestBody = [];
+    public static $rawBody = null;
 }

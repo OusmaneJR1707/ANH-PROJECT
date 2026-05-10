@@ -12,6 +12,7 @@ use App\Models\Employee;
 use App\Models\Role;
 use App\Models\Project;
 use App\Models\ProjectMember;
+use App\Models\PendingRegistration;
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as PHPMailerException;
@@ -89,12 +90,12 @@ class AuthController
         $master_db = new Database();
         $company_db = new Company($master_db);
         $plan_db = new Plan($master_db);
-        $subscription_db = new Subscription($master_db);
+        $pending_db = new PendingRegistration($master_db);
 
-        $plan_name = $data['plan_name'];
-        $db_type = $data['db_type'];
-        $subdomain = $data['subdomain'];
-        $vat_number = $data['vat_number'];
+        $plan_name = $data['plan_name'] ?? '';
+        $db_type = $data['db_type'] ?? '';
+        $subdomain = $data['subdomain'] ?? '';
+        $vat_number = $data['vat_number'] ?? '';
 
         $dbErrors = [];
 
@@ -102,6 +103,10 @@ class AuthController
         $plan = $plan_db->findByName($plan_name);
         if(!$plan) {
             $dbErrors['plan'] = "The selected plan does not exist";
+        } else {
+            if (empty($plan->Stripe_Price_ID)) {
+                $dbErrors['plan'] = "Configurazione del prezzo Stripe mancante per questo piano.";
+            }
         }
 
         if($db_type == "hosted" && !$plan->Cloud_Managed){
@@ -117,6 +122,10 @@ class AuthController
         $result = $company_db->findByVatNumber($vat_number);
         if($result) {
             $dbErrors['vat_number'] = "VAT number is already registered";
+        }
+
+        if ($pending_db->findBySubdomain($subdomain)) {
+            $dbErrors['subdomain'] = "This subdomain is currently reserved by another pending registration.";
         }
 
         if (!empty($dbErrors)) {
@@ -136,127 +145,78 @@ class AuthController
         }
 
         try {
-            $master_db->beginTransaction();
+            // Generazione di un id univoco per la richiesta che permetterà di ricollegare i dati dell'utente alla richiesta stessa
+            $pending_id = bin2hex(random_bytes(16));
 
-            // Preparazione dati da inserire nella tabella del tenant
-            $company_data = [
-                'VAT_Number' => $vat_number,
-                'Name' => $data['tenant_name'],
+            $hashed_password = null;
+            if (!$isGoogleAuth) {
+                $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
+                $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT);
+            }
+
+            $optional_data = json_encode([
+                'province' => $data['province'] ?? null,
+                'city' => $data['city'] ?? null,
+                'street' => $data['street'] ?? null,
+                'suite' => $data['suite'] ?? null,
+                'logo' => $data['logo'] ?? null,
+                'primary_color' => $data['primary_color'] ?? null,
+                'admin_profile_picture' => $data['admin_profile_picture'] ?? null
+            ]);
+
+            $pending_db->create([
+                'ID' => $pending_id,
+                'Tenant_Name' => $data['tenant_name'],
                 'Subdomain' => $subdomain,
-                'DB_Type' => $data['db_type']
-            ];
-
-            if(!empty($data['province'])) $company_data['Province'] = $data['province'];
-            if(!empty($data['city'])) $company_data['City'] = $data['city'];
-            if(!empty($data['street'])) $company_data['Street'] = $data['street'];
-            if(!empty($data['suite'])) $company_data['Suite'] = $data['suite'];
-            if(!empty($data['logo'])) $company_data['Logo_URL'] = $data['logo'];
-            if(!empty($data['primary_color'])) $company_data['Primary_Color'] = $data['primary_color'];
-
-            $tenant_id = $company_db->create($company_data);
-
-            $start_date = date('Y-m-d');
-            $duration = $plan->Duration_Days;
-            $end_date = date('Y-m-d', strtotime("+$duration days"));
-
-            $subscription_db->create([
-                'Tenant_ID' => $tenant_id,
+                'VAT_Number' => $vat_number,
                 'Plan_Name' => $plan_name,
-                'Start_Date' => $start_date,
-                'End_Date' => $end_date
+                'DB_Type' => $data['db_type'],
+                'Admin_Firstname' => $data['admin_firstname'],
+                'Admin_Lastname' => $data['admin_lastname'],
+                'Admin_Email' => $data['admin_email'],
+                'Admin_Password_Hash' => $hashed_password,
+                'Auth_Provider' => $isGoogleAuth ? 'google' : 'local',
+                'Optional_Data' => $optional_data,
+                'Status' => 'pending'
             ]);
 
-            $db_safe_identifier = str_replace('-', '_', $subdomain);
-            $tenant_db_name = 'anhproject_' . $db_safe_identifier . '_db';
-            $tenant_db_user = $db_safe_identifier;
-            $tenant_db_pass = hash_hmac('sha256', $db_safe_identifier, TENANT_SECRET_KEY);
+            // Inizializzazione di Stripe
+            \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
 
-            $master_db->query("CREATE DATABASE IF NOT EXISTS `$tenant_db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            $master_db->execute();
+            $frontend_url = "http://localhost:3000";
 
-            $master_db->query("CREATE USER IF NOT EXISTS '$tenant_db_user'@'localhost' IDENTIFIED BY '$tenant_db_pass'");
-            $master_db->execute();
-
-            $master_db->query("GRANT ALL PRIVILEGES ON `$tenant_db_name`.* TO '$tenant_db_user'@'localhost'");
-            $master_db->execute();
-
-            $master_db->query("FLUSH PRIVILEGES");
-            $master_db->execute();
-
-            // Passiamo $isGoogleAuth alla funzione che compila il DB del tenant
-            $this->setupTenantDatabase($tenant_db_name, $tenant_db_user, $tenant_db_pass, $data, $isGoogleAuth);
-
-            if ($master_db->inTransaction()) {
-                $master_db->commitTransaction(); 
-            }
-
-            try {
-                
-                $to = $data['admin_email'];
-
-                $mail = new PHPMailer(true);
-                $mail->isSMTP();
-                $mail->Host       = SMTP_HOST;
-                $mail->SMTPAuth   = true;
-                $mail->Username   = SMTP_USER;
-                $mail->Password   = SMTP_PASS;
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                $mail->Port       = SMTP_PORT;
-
-                $mail->setFrom(SMTP_USER, 'ANH-Project');
-                $mail->addAddress($to, $data['admin_firstname'] . ' ' . $data['admin_lastname']);
-                $mail->addReplyTo('supporto@anh-project.it', 'Supporto ANH-Project');
-
-                $mail->isHTML(true); 
-                $mail->Subject = "Benvenuto in ANH-Project, " . $data['admin_firstname'] . "!";
-                
-                $mail->Body    = "
-                    <div style='font-family: Arial, sans-serif; color: #333;'>
-                        <h2>Ciao {$data['admin_firstname']},</h2>
-                        <p>Il tuo workspace per <strong>{$data['tenant_name']}</strong> è stato creato con successo.</p>
-                        <p>Puoi accedere al tuo pannello di controllo cliccando sul link qui sotto:</p>
-                        <p>
-                            <a href='https://{$subdomain}.anh-project.it' style='display: inline-block; padding: 10px 20px; background-color: #3B82F6; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>
-                                Accedi al Workspace
-                            </a>
-                        </p>
-                    </div>
-                ";
-                
-                $mail->AltBody = "Ciao {$data['admin_firstname']},\n\nIl tuo workspace per {$data['tenant_name']} è pronto.\nAccedi qui: https://{$subdomain}.anh-project.it";
-
-                $mail->send();
-
-            } catch (\Exception $e) {
-                error_log("Errore invio email: " . $e->getMessage());
-            }
-
-            Response::response("Created", 201, "Tenant environment created successfully", [
-                'tenant_url' => 'https://' . $subdomain . '.tuodominio.it',
-                'tenant_id'  => $tenant_id 
+            // Creazione di una sessione per il checkout personalizzata
+            $checkout_session = \Stripe\Checkout\Session::create([
+                'payment_method_types' => ['card'], // Accetta carte di credito
+                'line_items' => [[ // Specifica a Stripe cosa si sta acquistando
+                    'price' => $plan->Stripe_Price_ID,
+                    'quantity' => 1,
+                ]],
+                'mode' => 'subscription', // Gestione di pagamenti ricorrenti 
+                'client_reference_id' => $pending_id, // ID con cui ci si collega ai dati dell'utente
+                'customer_email' => $data['admin_email'], // Precompilazione dell'email
+                'success_url' => $frontend_url . '/register/success?session_id={CHECKOUT_SESSION_ID}', // Dove bisogna mandare l'utente se paga
+                'cancel_url' => $frontend_url . '/register?error=payment_cancelled' // Dove mandare l'utente se clicca indietro
             ]);
 
+            // Aggiunta dell'id della sessione ai campi della riga di richiesta dell'utente
+            $pending_db->update($pending_id, [
+                'Stripe_Session_ID' => $checkout_session->id
+            ]);
+
+            Response::response("OK", 200, "Checkout created! Redirecting to Stripe.", [
+                'checkout_url' => $checkout_session->url
+            ]);
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            error_log("Errore API Stripe: " . $e->getMessage());
+            Response::response("Payment Gateway Error", 500, "Error communicating with the payment system.");
         } catch (\Exception $e) {
-            if ($master_db->inTransaction()) {
-                $master_db->rollbackTransaction();
-            }
-            if (isset($tenant_db_name)) {
-                $master_db->query("DROP DATABASE IF EXISTS `$tenant_db_name`");
-                $master_db->execute();
-            }
-            if (isset($tenant_db_user)) {
-                $master_db->query("DROP USER IF EXISTS '$tenant_db_user'@'localhost'");
-                $master_db->execute();
-            }
-            if (isset($tenant_id)) {
-                $company_db->delete($tenant_id);
-            }
-            error_log("FALLIMENTO CRITICO PROVISIONING TENANT [$subdomain]. Rollback manuale eseguito. Causa: " . $e->getMessage());
+            error_log("Errore registrazione in attesa: " . $e->getMessage());
             Response::response("Internal Server Error", 500, "");
         }
     }
 
-    private function validateRegistrationData($data, $isGoogleAuth)
+    private function validateRegistrationData(&$data, $isGoogleAuth)
     {
         $errors = [];
 
@@ -421,72 +381,6 @@ class AuthController
             error_log("VIES SOAP error for {$country_code}{$vat_number}: " . $e->getMessage());
 
             throw new \Exception("The European VIES service is temporarily unavailable");
-        }
-    }
-
-    private function setupTenantDatabase($db_name, $db_user, $db_pass, $data, $isGoogleAuth)
-    {
-        $host = defined('DB_HOST') ? DB_HOST : 'localhost';
-        $tenant_db = new Database($host, $db_name, $db_user, $db_pass);
-
-        $schema_path = __DIR__ . '/../Database/tenant_schema.sql';
-
-        if(!file_exists($schema_path)) {
-            throw new \Exception("SQL schema file not found in: " . $schema_path);
-        }
-
-        $schema_sql = file_get_contents($schema_path);
-        $tenant_db->getPDO()->exec($schema_sql);
-
-        // Istanze dei model per proseguire
-        $employee_db = new Employee($tenant_db);
-        $role_db = new Role($tenant_db);
-        $project_db = new Project($tenant_db);
-        $projectMember_db = new ProjectMember($tenant_db);
-
-        // Creazione dell'admin
-
-        try {
-            $tenant_db->beginTransaction();
-
-            $hashed_password = null; 
-
-            if (!$isGoogleAuth) {
-                $peppered_password = hash_hmac('sha256', $data['admin_password'], PEPPER_SECRET_KEY);
-                $hashed_password = password_hash($peppered_password, PASSWORD_BCRYPT);
-            }
-
-            $admin_id = $employee_db->create([
-                'Email' => $data['admin_email'],
-                'Password_Hash' => $hashed_password,
-                'First_Name' => $data['admin_firstname'],
-                'Last_Name' => $data['admin_lastname'],
-                'Status' => 'active',
-                'Profile_Picture' => isset($data['admin_profile_picture']) ? $data['admin_profile_picture'] : null,
-                'Auth_Provider' => $isGoogleAuth ? 'google' : 'local'
-            ]);
-
-            $adminRole = $role_db->findByName('Admin');
-            if(!$adminRole) {
-                throw new \Exception("Critical error: admin role not found");
-            }
-
-            $adminProject = $project_db->findByTitle('Admin');
-            if(!$adminProject) {
-                throw new \Exception("Critical error: admin project not found in default schema");
-            }
-
-            $projectMember_db->create([
-                'Employee_ID' => $admin_id,
-                'Project_ID' => $adminProject->ID,
-                'Role_ID' => $adminRole->ID
-            ]);
-
-            $tenant_db->commitTransaction();
-        } catch (\Exception $e) {
-            $tenant_db->rollbackTransaction();
-
-            throw $e;
         }
     }
 }

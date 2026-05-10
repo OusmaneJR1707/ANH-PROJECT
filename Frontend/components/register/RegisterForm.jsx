@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 export default function RegisterForm() {
     const searchParams = useSearchParams();
     const initialPlan = searchParams.get('plan') || 'standard';
+    const paymentError = searchParams.get('error');
 
     const [step, setStep] = useState(1);
     const [plans, setPlans] = useState([]);
@@ -67,6 +68,12 @@ export default function RegisterForm() {
             }
         }
     }, [formData.plan_name, plans]); 
+
+    useEffect(() => {
+        if (paymentError === 'payment_cancelled') {
+            toast.error("Hai annullato il pagamento. Non ti è stato addebitato nulla.");
+        }
+    }, [paymentError]);
 
     const validateField = (id, value) => {
         let error = '';
@@ -207,10 +214,11 @@ export default function RegisterForm() {
                 const data = await response.json();
 
                 if (response.ok || data.code === 201) {
-                    toast.success('Registrazione completata! Controlla la tua email per accedere al tuo workspace');
-
-                    if(data.data && data.data.tenant_url) {
-                        window.location.href = data.data.tenant_url;
+                    if (data.data && data.data.checkout_url) {
+                        toast.loading("Reindirizzamento al pagamento sicuro...");
+                        // Questa riga fa la magia: cambia pagina e porta l'utente su Stripe
+                        window.location.href = data.data.checkout_url; 
+                        return; // Interrompiamo l'esecuzione qui
                     }
                 } else {
                     toast.error('Errore: ' + (data.message || 'Si è verificato un errore durante la registrazione'));

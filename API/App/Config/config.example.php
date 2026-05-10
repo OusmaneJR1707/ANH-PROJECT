@@ -23,3 +23,6 @@ define('SMTP_PASS', 'la-tua-password-per-le-app'); // 16 caratteri generati da G
 define('SMTP_PORT', 587);
 
 define('GOOGLE_CLIENT_ID', 'IL_TUO_CLIENT_ID_LUNGHISSIMO.apps.googleusercontent.com');
+
+define('STRIPE_SECRET_KEY', 'chiave-lunghissima-stripe');
+define('STRIPE_WEBHOOK_SECRET', '*******');

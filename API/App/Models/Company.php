@@ -31,7 +31,7 @@ class Company extends Model
             $fields[] = "$key = :$key";
         }
 
-        $query = "UPDATE Company SET " . implode(", ", $fields) . "WHERE Tenant_ID = :tenant_id";
+        $query = "UPDATE Company SET " . implode(", ", $fields) . " WHERE Tenant_ID = :tenant_id";
 
         $this->db->query($query);
 
