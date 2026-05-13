@@ -28,7 +28,10 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript}} />
+        <script 
+          dangerouslySetInnerHTML={{ __html: themeInitScript }} 
+          suppressHydrationWarning 
+        />
       </head>
       
       <body className="bg-white dark:bg-[#0a0f1a] text-gray-900 dark:text-white transition-colors duration-300">

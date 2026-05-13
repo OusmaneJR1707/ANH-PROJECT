@@ -50,7 +50,7 @@ class HandlerJwt
         }
 
         try {
-            return JWT::decode($token, new Key(SECRET_KEY, '"HS256'));
+            return JWT::decode($token, new Key(SECRET_KEY, 'HS256'));
         } catch (ExpiredException $e) {
             throw $e;
         } catch (\Throwable $e) {

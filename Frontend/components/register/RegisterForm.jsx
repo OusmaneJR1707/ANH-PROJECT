@@ -216,9 +216,9 @@ export default function RegisterForm() {
                 if (response.ok || data.code === 201) {
                     if (data.data && data.data.checkout_url) {
                         toast.loading("Reindirizzamento al pagamento sicuro...");
-                        // Questa riga fa la magia: cambia pagina e porta l'utente su Stripe
+                        
                         window.location.href = data.data.checkout_url; 
-                        return; // Interrompiamo l'esecuzione qui
+                        return; 
                     }
                 } else {
                     toast.error('Errore: ' + (data.message || 'Si è verificato un errore durante la registrazione'));

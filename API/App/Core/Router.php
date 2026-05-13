@@ -60,7 +60,7 @@ class Router
 
             // Sostituisce la parte dinamica della rotta con una regex che accetta tutti i valori che la rispettano
             // Serve perchè le rotte dinamiche verranno definite come rotta/{elemento_dinamico}, perciò bisogna mettere una regex che intercetti correttamente la parte dinamica al posto della scritta {elemento_dinamico}
-            $pattern = preg_replace('#\{[a-zA-Z0-9_]+\}#', '([a-zA-Z0-9_]+)', $routePath);
+            $pattern = preg_replace('#\{[a-zA-Z0-9_-]+\}#', '([a-zA-Z0-9_-]+)', $routePath);
             $pattern = "#^" . $pattern . "$#";
 
             if(preg_match($pattern, $requestPath, $matches)) {
@@ -95,7 +95,7 @@ class Router
             if ($storedMethod === $requestMethod) continue;
 
             foreach ($routes as $routePath => $target) {
-                $pattern = preg_replace('#\{[a-zA-Z0-9_]+\}#', '([a-zA-Z0-9_]+)', $routePath);
+                $pattern = preg_replace('#\{[a-zA-Z0-9_-]+\}#', '([a-zA-Z0-9_-]+)', $routePath);
                 $pattern = "#^" . $pattern . "$#";
 
                 if (preg_match($pattern, $requestPath)) {

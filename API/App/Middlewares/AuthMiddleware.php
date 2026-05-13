@@ -11,11 +11,7 @@ use Exception;
 class AuthMiddleware 
 {
     private $tenantWhitelist = [
-        'ping',
-        'plans',
-        'auth/login', 
-        'auth/register',
-        'auth/google'
+        
     ];
 
     public function handle() {
@@ -47,12 +43,12 @@ class AuthMiddleware
             $handler = new HandlerJwt();
             $payload = $handler->validateJwt($token);
 
-            if ($payload['data']->tenant_id !== Context::$tenantId){
+            if ($payload->data->tenant_id !== Context::$tenantId){
                 Response::response("Forbidden", 403, "Tenant mismatch");
                 exit();
             }
 
-            Context::$user = $payload['sub'];
+            Context::$user = $payload->sub;
             return;
         } catch (ExpiredException $e) {
             Response::response("Unauthorized", 401, "Token expired");

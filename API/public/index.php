@@ -25,11 +25,13 @@ $authMiddleware->handle();
 $router = new Router();
 
 $router->get('ping', [\App\Controllers\AuthController::class, 'ping']);
+$router->get('tenants/verify/{sottodominio}', [\App\Controllers\AuthController::class, 'verifyTenant']);
 
 $router->get('plans', [\App\Controllers\PlanController::class, 'getPlans']);
 
 $router->post('auth/register', [\App\Controllers\AuthController::class, 'registerTenant']);
 $router->post('auth/google', [\App\Controllers\AuthController::class, 'registerGoogle']);
+
 
 $router->post('webhooks/stripe', [\App\Controllers\StripeWebhookController::class, 'handle']);
 

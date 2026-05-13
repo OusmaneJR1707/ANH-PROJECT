@@ -26,6 +26,19 @@ class AuthController
         \App\Core\Response::response("OK", 200, "Pong! APIs working. Master DB: " . $isMaster);
     }
 
+    public function verifyTenant($subdomain) {
+        $master_db = new Database();
+        $company_db = new Company($master_db);
+
+        $tenant = $company_db->findBySubdomain($subdomain);
+
+        if ($tenant) {
+            Response::response("OK", 200, "Tenant found");
+        } else {
+            Response::response("Not Found", 404, "Tenant does not exist");
+        }
+    }
+
     public function registerTenant()
     {
         if (!Context::$isMaster) {
