@@ -15,42 +15,42 @@ Si basa sul **diagramma di Gantt**, un potente strumento ideato da Henry Gantt c
 **ANH-Project** è un’applicazione web pensata per semplificare la distribuzione delle attività tra i dipendenti di un’azienda tramite un sistema basato sui diagrammi di Gantt.  
 La piattaforma consente inoltre di generare **report generali, di team e personali**, offrendo una visione chiara dell’andamento dei lavoratori e dei progetti nel periodo selezionato.
 
-Le aziende possono registrarsi tramite la pagina di presentazione del progetto.  
-La procedura richiede: **nome della società**, **partita IVA** (utilizzata per verificare l’esistenza dell’azienda) e **password di accesso**.
-
 È disponibile anche una **versione DEMO**, utile per testare il servizio prima dell’acquisto.  
 Gli utenti possono inoltre confrontare i piani disponibili o contattare il reparto vendite per un piano personalizzato.
 
-Una volta completata la registrazione e superata la verifica della partita IVA, l’azienda potrà acquistare un piano oppure confermare quello personalizzato. Dopo il pagamento della licenza, otterrà accesso completo alle funzionalità.
 
 Le aziende registrate possono:
-- Personalizzare la grafica dell’applicazione
-- Aggiungere e gestire i dipendenti (incluse eventuali pre-registrazioni)
-- Gestire il rinnovo della licenza
-- Generare report generali sull’andamento dei gruppi di lavoro
+- Aggiungere e gestire i dipendenti
+- Acquistare e gestire le licenze
+- Generare report generali sull’andamento dei progetti e dei team
+- Personalizzare la grafica del portale
+- Creare e gestire i dipendenti
 
 ### Ruoli dei Dipendenti
-Sono presenti due tipologie di utenti:
+Sono presenti tre tipologie di utenti:
+- **Amministratore**
 - **Capigruppo**
 - **Membri di progetto**
 
-L’azienda può assegnare entrambi i ruoli allo stesso dipendente in progetti diversi.
+L’azienda può assegnare i ruoli di capogruppo e membro di progetto allo stesso dipendente in progetti diversi.
 
 I **capigruppo** possono:
-- Creare progetti
-- Aggiungere membri di progetto
-- Assegnare attività
-- Calcolare il percorso critico
-- Generare report del team e personali
+- Creare e gestire un progetto
+- Aggiungere dipendenti al progetto
+- Creare e gestire le attività
+- Generare report del team
+- Generare report personali dei dipendenti
+- Calcolare il percorso critico del progetto
 
 I **membri di progetto** possono:
-- Visualizzare i propri report
-- Segnare come completate le attività assegnate
+- Visualizzare le attività
+- Segnare un’attività come completata
+- Visualizzare il report personale
 
 ### Funzioni comuni ai dipendenti
 - Invio messaggi ad altri dipendenti  
-- Invio segnalazioni di problemi  
 - Pre-registrazione alla piattaforma per agevolare l’azienda nell’aggiunta dei dipendenti  
+- Aggiunta e rimozione della giornata lavorativa
 
 ---
 
