@@ -40,7 +40,10 @@ class Database
             $this->db = new PDO($dsn, $user, $pass, $options);
         } catch (PDOException $e) {
             $this->error = $e->getMessage();
+            error_log("Database connection error: " . $this->error);
+            error_log("   Host: $host | DB: $db_name | User: $user");
             Response::response("Internal Server Error", 500, "Database connection error");
+            exit();
         }
     }
 

@@ -108,17 +108,13 @@ class StripeWebhookController
             $tenant_db_user = $db_safe_identifier;
             $tenant_db_pass = hash_hmac('sha256', $db_safe_identifier, TENANT_SECRET_KEY);
 
-            $master_db->query("CREATE DATABASE IF NOT EXISTS `$tenant_db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-            $master_db->execute();
+            $master_db->getPDO()->exec("CREATE DATABASE IF NOT EXISTS `$tenant_db_name` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+            
+            $master_db->getPDO()->exec("CREATE USER IF NOT EXISTS '$tenant_db_user'@'localhost' IDENTIFIED BY '$tenant_db_pass'");
 
-            $master_db->query("CREATE USER IF NOT EXISTS '$tenant_db_user'@'localhost' IDENTIFIED BY '$tenant_db_pass'");
-            $master_db->execute();
+            $master_db->getPDO()->exec("GRANT ALL PRIVILEGES ON `$tenant_db_name`.* TO '$tenant_db_user'@'localhost'");
 
-            $master_db->query("GRANT ALL PRIVILEGES ON `$tenant_db_name`.* TO '$tenant_db_user'@'localhost'");
-            $master_db->execute();
-
-            $master_db->query("FLUSH PRIVILEGES");
-            $master_db->execute();
+            $master_db->getPDO()->exec("FLUSH PRIVILEGES");
 
             $this->setupTenantDatabase($tenant_db_name, $tenant_db_user, $tenant_db_pass, $data, $optional_data);
 

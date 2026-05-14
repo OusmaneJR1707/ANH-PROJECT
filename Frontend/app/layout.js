@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Toaster } from 'sonner';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata = {
   title: "ANH-Project",
@@ -35,7 +36,10 @@ export default function RootLayout({ children }) {
       </head>
       
       <body className="bg-white dark:bg-[#0a0f1a] text-gray-900 dark:text-white transition-colors duration-300">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+        
         <Toaster position="bottom-right" richColors />
       </body>
     </html>

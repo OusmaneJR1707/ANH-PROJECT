@@ -11,7 +11,10 @@ use Exception;
 class AuthMiddleware 
 {
     private $tenantWhitelist = [
-        
+        'auth/refresh',
+        'auth/login',
+        'auth/login/google',
+        'auth/logout'
     ];
 
     public function handle() {
@@ -32,12 +35,19 @@ class AuthMiddleware
 
     private function checkJwt()
     {
-        if(!isset($_COOKIE["Authorization"])){
+        // Cerca il token negli header Authorization (standard HTTP)
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        $token = '';
+
+        if (!empty($authHeader) && strpos($authHeader, 'Bearer ') === 0) {
+            $token = substr($authHeader, 7); // Rimuove "Bearer "
+        }
+
+        if (empty($token)) {
+            error_log("Token missing - HTTP_AUTHORIZATION: " . ($authHeader ?? 'empty') . " | Cookie Auth: " . ($_COOKIE["Authorization"] ?? 'empty'));
             Response::response("Unauthorized", 401, "Token missing");
             exit();
         }
-
-        $token = trim($_COOKIE["Authorization"]);
 
         try {
             $handler = new HandlerJwt();

@@ -34,6 +34,7 @@ class HandlerJwt
             'iat' => time(),
             'exp' => time() + (3600 * 24 * 7), // durata di 7 giorni
             'sub' => $userId,
+            'jti' => $jti,
             'data' => [
                 "tenant_id" => $tenantId,
                 "type" => "refresh"

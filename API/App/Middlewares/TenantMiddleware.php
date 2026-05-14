@@ -10,22 +10,26 @@ use App\Models\Company;
 class TenantMiddleware {
 
     public static function handle() {
+        $tenantHeader = $_SERVER['HTTP_X_TENANT'] ?? null;
+
+        if ($tenantHeader) {
+            Context::$isMaster = false;
+            self::loadTenantFromMaster($tenantHeader);
+            return; 
+        }
+
         $host = explode(':', $_SERVER['HTTP_HOST'])[0];
 
         if (strpos($host, 'www.') === 0) {
-            $host = substr($host, 4); // Taglia i primi 4 caratteri ("www.")
+            $host = substr($host, 4); 
         }
 
         if ($host === DOMAIN_NAME){
-            // E' stata fatta una richiesta su master
             Context::$isMaster = true;
-        }else{
-            // E' stata fatta una richiesta per uno specifico tenant, il quale potrebbe anche non esistere
+        } else {
             Context::$isMaster = false;
-
-            $subdomain = str_replace('.' . DOMAIN_NAME, '', $host); // Prende il sottodominio
- 
-            self::loadTenantFromMaster($subdomain); // Controlla se il sottodominio esiste nella tabella master e, nel caso, imposta i parametri
+            $subdomain = str_replace('.' . DOMAIN_NAME, '', $host); 
+            self::loadTenantFromMaster($subdomain); 
         }
     }
 

@@ -2,27 +2,23 @@ import { notFound } from 'next/navigation';
 
 async function getTenantData(subdomain) {
   const url = `http://localhost/ANH-PROJECT/API/tenants/verify/${subdomain}`;
-  console.log("1. URL chiamato da Next:", url); // <--- LOG 1
 
   try {
     const res = await fetch(url, { cache: 'no-store' });
-    console.log("2. Codice di risposta PHP:", res.status); // <--- LOG 2
     
     if (!res.ok) return null;
     return res.json();
   } catch (error) {
-    console.error("3. Errore di rete (Fetch fallito):", error); // <--- LOG 3
     return null;
   }
 }
 
 export default async function TenantLayout({ children, params }) {
   const resolvedParams = await params;
-  const tenant =resolvedParams.tenant;
+  const tenant = resolvedParams.tenant;
 
   const tenantData = await getTenantData(tenant);
 
-  // Se l'API PHP risponde 404, Next.js attiva automaticamente il file not-found.js più vicino
   if (!tenantData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#080c14] p-4">

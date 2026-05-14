@@ -5,18 +5,12 @@ namespace App\Controllers;
 use App\Core\Response;
 use App\Core\Context;
 use App\Core\Database;
+use App\Core\HandlerJwt;
 use App\Models\Company;
 use App\Models\Plan;
-use App\Models\Subscription;
 use App\Models\Employee;
-use App\Models\Role;
-use App\Models\Project;
-use App\Models\ProjectMember;
 use App\Models\PendingRegistration;
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception as PHPMailerException;
-use PHPMailer\PHPMailer\SMTP;
+use App\Models\RefreshToken;
 
 class AuthController
 {
@@ -395,5 +389,248 @@ class AuthController
 
             throw new \Exception("The European VIES service is temporarily unavailable");
         }
+    }
+
+    public function login()
+    {
+        $data = Context::$requestBody;
+        $email = $data['email'] ?? '';
+        $password = $data['password'] ?? '';
+
+        if (empty($email) || empty($password)) {
+            Response::response("Bad Request", 400, "Email and password are required");
+            return;
+        }
+
+        $company_db = new Database();
+        $employee_db = new Employee($company_db);
+        $refreshToken_db = new RefreshToken($company_db);
+
+        $employee = $employee_db->findByEmail($email);
+
+        if (!$employee) {
+            Response::response("Unauthorized", 401, "Invalid credentials");
+            return;
+        }
+
+        $peppered_password = hash_hmac('sha256', $password, PEPPER_SECRET_KEY);
+
+        if (!password_verify($peppered_password, $employee->Password_Hash)) {
+            Response::response("Unauthorized", 401, "Invalid credentials");
+            return;
+        }
+
+        $handlerJwt = new HandlerJwt();
+        $access_token = $handlerJwt->generateAccessToken($employee->ID, Context::$tenantId);
+
+        $jti = bin2hex(random_bytes(32));
+        $refresh_token = $handlerJwt->generateRefreshToken($employee->ID, Context::$tenantId, $jti);
+
+        $expiresAt = date('Y-m-d H:i:s', time() + (3600 * 24 * 7));
+
+        $data = [
+            'Token_JTI' => $jti,
+            'Employee_ID' => $employee->ID,
+            'Expires_At' => $expiresAt
+        ];
+
+        $refreshToken_db->create($data);
+
+        setcookie(
+            "refresh_token",
+            $refresh_token, 
+            [
+                'expires' => time() + (3600 * 24 * 7),
+                'path' => '/',
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]
+        );
+
+        Response::response("OK", 200, "Login successful", [
+            "access_token" => $access_token,
+            "user" => [
+                "id" => $employee->ID,
+                "first_name" => $employee->First_Name,
+                "last_name" => $employee->Last_Name,
+                "email" => $employee->Email
+            ]
+        ]);
+    }
+
+    public function loginGoogle()
+    {
+        $data = Context::$requestBody;
+
+        if (empty($data['google_token'])) {
+            Response::response("Bad Request", 400, "Missing Google token");
+            return;
+        }
+
+        try {
+            $client = new \Google_Client(['client_id' => GOOGLE_CLIENT_ID]);
+            $payload = $client->verifyIdToken($data['google_token']);
+
+            if (!$payload) {
+                Response::response("Unauthorized", 401, "Invalid Google token");
+                return;
+            }
+
+            $email = $payload['email'];
+
+            try {
+                $company_db = new Database();
+                $employee_db = new Employee($company_db);
+                $refreshToken_db = new RefreshToken($company_db);
+
+                $employee = $employee_db->findByEmail($email);
+
+                if (!$employee) {
+                    Response::response("Unauthorized", 401, "User not found in this workspace");
+                    return;
+                }
+
+                // CONTROLLO FONDAMENTALE SUL PROVIDER
+                // Se l'utente si era registrato con email e password, blocchiamo l'accesso tramite Google
+                if ($employee->Auth_Provider !== 'google') {
+                    Response::response("Forbidden", 403, "Please, use your password to authenticate");
+                    return;
+                }
+
+                // Generazione dei Token JWT (Identica al login standard)
+                $jwtHandler = new HandlerJwt();
+                $accessToken = $jwtHandler->generateAccessToken($employee->ID, Context::$tenantId);
+                
+                $jti = bin2hex(random_bytes(32));
+                $refreshToken = $jwtHandler->generateRefreshToken($employee->ID, Context::$tenantId, $jti);
+
+                $expiresAt = date('Y-m-d H:i:s', time() + (3600 * 24 * 7));
+
+                $data = [
+                    'Token_JTI' => $jti,
+                    'Employee_ID' => $employee->ID,
+                    'Expires_At' => $expiresAt
+                ];
+
+                $refreshToken_db->create($data);
+
+                setcookie("refresh_token", $refreshToken, [
+                    'expires' => time() + (3600 * 24 * 7),
+                    'path' => '/',
+                    'httponly' => true,
+                    'samesite' => 'Lax'
+                ]);
+
+                Response::response("OK", 200, "Login successful", [
+                    "access_token" => $accessToken,
+                    "user" => [
+                        "id" => $employee->ID,
+                        "first_name" => $employee->First_Name,
+                        "last_name" => $employee->Last_Name,
+                        "email" => $employee->Email
+                    ]
+                ]);
+            } catch (\Exception $dbError) {
+                error_log("LoginGoogle DB Error: " . $dbError->getMessage());
+                Response::response("Internal Server Error", 500, "Database connection error");
+            }
+
+        } catch (\Exception $e) {
+            error_log("LoginGoogle Error: " . $e->getMessage());
+            Response::response("Internal Server Error", 500, "Google authentication failed");
+        }
+    }
+
+    public function refresh() {
+        $token = $_COOKIE['refresh_token'] ?? '';
+        if (empty($token)) {
+            Response::response("Unauthorized", 401, "Refresh token missing");
+            exit();
+        }
+
+        try {
+            $handlerJwt = new HandlerJwt();
+            $payload = $handlerJwt->validateJwt($token);
+
+            if ($payload->data->type !== 'refresh') {
+                throw new \Exception("Invalid token type");
+            }
+
+            $db = new Database();
+            $refresh_token_db = new RefreshToken($db);
+            $savedToken = $refresh_token_db->findByJti($payload->jti);
+
+            if (!$savedToken) {
+                Response::response("Unauthorized", 401, "Token revoked or invalid");
+                exit();
+            }
+
+            if (strtotime($savedToken->Expires_At) < time()) {
+                Response::response("Unauthorized", 401, "Refresh token expired in database");
+                exit();
+            }
+
+            $newAccessToken = $handlerJwt->generateAccessToken($payload->sub, $payload->data->tenant_id);
+
+            $employee_db = new Employee($db);
+            $employee = $employee_db->findById($payload->sub);
+
+            Response::response("OK", 200, "Token refreshed successfully", [
+                "access_token" => $newAccessToken,
+                "user" => [
+                    "id" => $employee->ID,
+                    "first_name" => $employee->First_Name,
+                    "last_name" => $employee->Last_Name,
+                    "email" => $employee->Email
+                ]
+            ]);
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            \App\Core\Response::response("Unauthorized", 401, "Refresh token expired");
+            exit();
+        } catch (\Exception $e) {
+            \App\Core\Response::response("Unauthorized", 401, "Invalid session");
+            exit();
+        }
+    }
+
+    public function logout() {
+        $token = $_COOKIE['refresh_token'] ?? '';
+        
+        // Prova a eliminare il token dal database, ma se fallisce non è un problema
+        if (!empty($token)) {
+            try {
+                $handlerJwt = new HandlerJwt();
+                $payload = $handlerJwt->validateJwt($token);
+
+                if ($payload->data->type === 'refresh') {
+                    // Prova a eliminare il refresh token dal database del tenant
+                    try {
+                        $db = new Database();
+                        $refresh_token_db = new RefreshToken($db);
+                        $refresh_token_db->deleteByJti($payload->jti);
+                    } catch (\Exception $dbError) {
+                        // Se il database non è raggiungibile, non è un problema critico
+                        error_log("Logout: Impossibile eliminare il token dal DB: " . $dbError->getMessage());
+                    }
+                }
+            } catch (\Exception $jwtError) {
+                // Token invalido o scaduto - ok, procedi comunque
+                error_log("Logout: Token JWT invalido: " . $jwtError->getMessage());
+            }
+        }
+
+        // Cancella il cookie del refresh token
+        setcookie(
+            "refresh_token",
+            "",
+            [
+                'expires' => time() - 3600,
+                'path' => '/',
+                'httponly' => true,
+                'samesite' => 'Lax'
+            ]
+        );
+
+        Response::response("OK", 200, "Logout successful");
     }
 }

@@ -52,15 +52,12 @@ CREATE TABLE IF NOT EXISTS General_Report (
 -- 2. TABELLE DI PRIMO LIVELLO (Dipendono da 1 tabella)
 -- ====================================================
 
-CREATE TABLE IF NOT EXISTS Refresh_Token (
+CREATE TABLE IF NOT EXISTS RefreshTokens (
     ID INT AUTO_INCREMENT PRIMARY KEY,
     Employee_ID INT NOT NULL,
-    JTI VARCHAR(255) NOT NULL UNIQUE,
+    Token_JTI VARCHAR(64) NOT NULL UNIQUE,
     Expires_At DATETIME NOT NULL,
-    Is_Revoked BOOLEAN DEFAULT FALSE,
     Created_At DATETIME DEFAULT CURRENT_TIMESTAMP,
-    Source_IP VARCHAR(45),
-    User_Agent TEXT,
     FOREIGN KEY (Employee_ID) REFERENCES Employee(ID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -205,3 +202,39 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 INSERT INTO Role (Name, Description) VALUES ('Admin', 'Global System Administrator');
 INSERT INTO Project (Title, Description, Status) VALUES ('Admin', 'Project reserved for the global management of the company', 'In progress');
+
+-- Permessi
+INSERT INTO Permission (Name, Description) VALUES
+-- Area Amministrazione & Workspace
+('license.manage', 'Gestione della licenza'),
+('workspace.customize', 'Personalizzazione workspace'),
+('employee.create', 'Aggiunta dipendente'),
+('employee.update', 'Modifica Dipendente'),
+('employee.delete', 'Rimozione dipendente'),
+
+-- Area Reportistica
+('report.general.read', 'Generazione report generali'),
+('report.team.read', 'Generazione report del team'),
+('report.personal.read', 'Generazione report personali'),
+('report.personal.view', 'Visualizzazione report personali'),
+
+-- Area Progetti
+('project.create', 'Creazione del progetto'),
+('project.update', 'Modifica progetto'),
+('project.delete', 'Rimozione progetto'),
+('project.critical_path', 'Calcolo percorso critico'),
+
+-- Area Attività (Task)
+('task.create', 'Creazione attività'),
+('task.read', 'Visualizzazione attività'),
+('task.update', 'Modifica attività'),
+('task.status.update', 'Aggiornamento stato attività'),
+('task.delete', 'Rimozione attività'),
+
+-- Area Operatività
+('message.create', 'Invio messaggi'),
+('worklog.create', 'Aggiunta giornata di lavoro'),
+('worklog.delete', 'Rimozione giornata di lavoro');
+
+INSERT INTO Role_Permissions (Role_ID, Permission_ID)
+SELECT 1, ID FROM Permission;

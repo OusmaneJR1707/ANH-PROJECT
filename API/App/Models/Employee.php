@@ -25,6 +25,13 @@ class Employee extends Model
         return $this->db->lastInsertId();
     }
 
+    public function findByID($id)
+    {
+        $this->db->query("SELECT * FROM Employee WHERE ID = :id");
+        $this->db->bind(":id", $id);
+        return $this->db->singleResult();
+    }
+
     public function findByEmail($email)
     {
         $this->db->query("SELECT * FROM Employee WHERE Email = :email");
