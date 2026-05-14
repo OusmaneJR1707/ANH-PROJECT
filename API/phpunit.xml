@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="vendor/autoload.php" colors="true">
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="DB_NAME" value="anhproject_master_test"/>
+        <env name="STRIPE_WEBHOOK_SECRET" value="whsec_test_secret"/>
+    </php>
+</phpunit>

@@ -25,7 +25,6 @@ $authMiddleware->handle();
 $router = new Router();
 
 $router->get('ping', [\App\Controllers\AuthController::class, 'ping']);
-$router->get('debug/db', [\App\Controllers\AuthController::class, 'debugDatabase']);
 $router->get('tenants/verify/{sottodominio}', [\App\Controllers\AuthController::class, 'verifyTenant']);
 
 $router->get('plans', [\App\Controllers\PlanController::class, 'getPlans']);

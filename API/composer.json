@@ -17,5 +17,8 @@
         "phpmailer/phpmailer": "^7.0",
         "google/apiclient": "^2.19",
         "stripe/stripe-php": "^20.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.5"
     }
 }

@@ -15,3 +15,5 @@ Thumbs.db
 # Configurazioni degli editor (VS Code, PHPStorm)
 .vscode/
 .idea/
+
+.phpunit.result.cache
