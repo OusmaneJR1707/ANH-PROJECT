@@ -24,7 +24,6 @@ Le aziende registrate possono:
 - Acquistare e gestire le licenze
 - Generare report generali sull’andamento dei progetti e dei team
 - Personalizzare la grafica del portale
-- Creare e gestire i dipendenti
 
 ### Ruoli dei Dipendenti
 Sono presenti tre tipologie di utenti:
